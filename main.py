@@ -10,7 +10,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
-from ttkbootstrap.constants import *
 
 load_dotenv()
 
@@ -30,7 +29,7 @@ def siguiente():
         EC.presence_of_element_located((By.XPATH, '//input[@value="Continuar >"]'))
     ).click()
 
-def realizar_operacion(driver, cuil, option, products):
+def realizar_operacion(driver, clientcuil, option, products):
     abrir_pagina(driver, "https://auth.afip.gob.ar/contribuyente_/login.xhtml")
     
     try:
@@ -96,14 +95,14 @@ def realizar_operacion(driver, cuil, option, products):
         )
         
         select = Select(condicion)
-        select.select_by_index(3)
+        select.select_by_index(option)
         
         
         cuil = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "nrodocreceptor"))
         )
         
-        cuil.send_keys(os.getenv('AFIP_CUIL'))
+        cuil.send_keys(clientcuil)
         
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "formadepago1"))
@@ -126,13 +125,11 @@ class App:
         self.root.title("Factura Fácil AFIP")
         self.root.iconbitmap('afip.ico') 
         self.root.geometry("615x420")
-        
-        
 
         # Crear campos de entrada de Cuil
         ttk.Label(root, text="Cuil del cliente:").place(x=10, y=10)
         self.cuil = ttk.Entry(root, bootstyle="secondary")
-        self.cuil.place(x=10, y=34, width=130, height=28)
+        self.cuil.place(x=10, y=32, width=130, height=30)
 
         # Crear campo y opciones para el OptionMenu
         self.options = ('Consumidor Final', 'Iva Responsable Inscripto', 'Iva Sujeto Excento')
@@ -147,38 +144,46 @@ class App:
         self.tree.heading("name", text="Nombre")
         self.tree.heading("quantity", text="Cantidad (Unidades)")
         self.tree.heading("unique_price", text="Precio por Unidad (ARS)")
-        self.tree.heading("total_price", text="Precio Total ARS")
+        self.tree.heading("total_price", text="Precio Total (ARS)")
         
-        self.tree.column("name", width=120)
-        self.tree.column("quantity", width=120)
-        self.tree.column("unique_price", width=120)
-        self.tree.column("total_price", width=150)
+        self.tree.column("name", anchor=ttk.E, width=150)
+        self.tree.column("quantity",anchor=ttk.E,  width=150)
+        self.tree.column("unique_price",anchor=ttk.E,  width=150)
+        self.tree.column("total_price",anchor=ttk.E, width=149)
         self.tree.place(x=5, y=75, width=600)
         
+        # Crear campo y opciones para el OptionMenu
+        self.common_products = ('Revelado de Fotografias', 'Laser', 'Sublimación')
         
         ttk.Label(root, text="Nombre de producto:").place(x=10, y=265)
-        self.name = ttk.Entry(root,bootstyle="secondary")
-        self.name.place(x=10, y=285, height=25)
+        self.name = ttk.Combobox(root,bootstyle="secondary", values=self.common_products)
+        self.name.place(x=10, y=285, height=25, width=150)
         
         ttk.Label(root, text="Cantidad:").place(x=10, y=315)
         self.quantity = ttk.Entry(root,bootstyle="secondary")
-        self.quantity.place(x=10, y=335, height=25)
+        self.quantity.place(x=10, y=335, height=25, width=150)
         
         ttk.Label(root, text="Precio Unitario:").place(x=10, y=365)
         self.priceu = ttk.Entry(root,bootstyle="secondary")
-        self.priceu.place(x=10, y=385, height=25)
+        self.priceu.place(x=10, y=385, height=25, width=150)
         
         
         
-        self.add_row_button = ttk.Button(root, bootstyle="default-outline", text="Agregar Fila", command=self.add_row)
-        self.add_row_button.place(x=170, y=268, width=90, height=28)
+        self.add_row_button = ttk.Button(root, bootstyle="default-outline", text="Agregar Producto", command=self.add_row)
+        self.add_row_button.place(x=180, y=313, width=140, height=28)
+        
+        self.remove_row_button = ttk.Button(root, bootstyle="danger-outline", text="Eliminar Seleccionados", command=self.add_row)
+        self.remove_row_button.place(x=180, y=348, width=140, height=28)
+        
+        self.remove_all_button = ttk.Button(root, bootstyle="dark", text="Eliminar Todos", command=self.add_row)
+        self.remove_all_button.place(x=180, y=383, width=140, height=28)
 
         # Botón para ejecutar las funciones de Selenium
         self.selenium_button = ttk.Button(root, bootstyle="success-outline", text="Enviar", command=self.ejecutar_selenium)
-        self.selenium_button.place(x=300, y=280, width=90)
+        self.selenium_button.place(x=485, y=270, width=120)
         
         self.error_label = ttk.Label(root, text='', bootstyle="danger")
-        self.error_label.place(x=160, y=390)
+        self.error_label.place(x=330, y=390)
 
         # Variables para almacenar los valores
         self.var_cuil = ""
@@ -202,7 +207,7 @@ class App:
         products = []
         
         driver = iniciar_navegador()
-        realizar_operacion(driver, cuil=cuil, option=option, products=products)
+        realizar_operacion(driver, clientcuil=cuil, option=option, products=products)
 
 if __name__ == "__main__":
     root = ttk.Window()

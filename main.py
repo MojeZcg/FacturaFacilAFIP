@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import time
 from tkinter import StringVar, simpledialog
 
@@ -10,6 +11,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
+from sqlalchemy.orm import Session
+
+from database import Base, engine, get_db
+from seed import Facturas, TiposDeDocumentos
+
+db: Session = next(get_db())
 
 load_dotenv()
 
@@ -467,8 +474,24 @@ class App:
         client_option = self.get_client_id_option()
         option = self.get_selected_option()
         products =  self.get_products()
+        totalvalue = 0
+        
+        for product in products:
+            price = float(product['Price'])
+            quantity = float(product['Quantity'])
+            totalvalue += (price * quantity)
+        
+        factura = Facturas(
+            id_cliente=client_id,
+            tipo_de_documento_id=client_option,
+            condicion_iva=option,
+            productos=products,
+            valor_total=totalvalue,
+        )
         
         if client_option != -1 and option != -1 and client_id != -1 and products != []:
+            db.add_all(factura)
+            
             driver = start_chrome()
             realizar_operacion(driver, client_option=client_option , client_id=client_id, option=option, products=products)
             self.clear_all()         

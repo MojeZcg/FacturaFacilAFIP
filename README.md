@@ -5,14 +5,12 @@
 ## Características
 - Integración con Web Services de AFIP: Utiliza los servicios de WSFEv1 para emitir facturas electrónicas.
 - Autenticación y autorización: Maneja el proceso de autenticación y autorización requerido por AFIP.
-- Soporte para diferentes tipos de comprobantes: Permite emitir diferentes tipos de comprobantes electrónicos.
-- Validación de datos: Implementa validaciones para asegurar la integridad de los datos antes de enviarlos a AFIP.
-- Generación de PDF: Incluye funcionalidades para generar versiones PDF de las facturas emitidas.
+  
 
 > [!IMPORTANT]
 > ## Requisitos
-> - Python 3.6 o superior
-> - Bibliotecas adicionales: Las dependencias necesarias están detalladas en el archivo requirements.txt.
+> - Python 3.11 o superior
+> - Las dependencias necesarias están detalladas en el archivo requirements.txt.
 > 
 > ## Instalación
 > ### Clonar el repositorio:

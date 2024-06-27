@@ -11,7 +11,7 @@
 
 > [!IMPORTANT]
 > ## Requisitos
-> - Python 3.6 o superior
+> - Python 3.11 o superior
 > - Bibliotecas adicionales: Las dependencias necesarias están detalladas en el archivo requirements.txt.
 > 
 > ## Instalación

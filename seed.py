@@ -71,20 +71,7 @@ condicion_iva = [
 session.add_all(condicion_iva)
 session.commit()
 
-# Insertar datos en Facturas
-factura = Facturas(
-    id_cliente='12-3456789012-3',
-    tipo_de_documento_id=1,
-    condicion_iva=1,
-    productos='Producto1, Producto2',
-    valor_total=123.45,
-    fecha=datetime.now(timezone.utc)
-)
-
-session.add(factura)
-session.commit()
-
 # Cerrar la sesión
 session.close()
 
-print("Base de datos inicializada con datos de ejemplo.")
+print("Base de datos inicializada con exito.")

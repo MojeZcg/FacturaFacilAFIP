@@ -11,15 +11,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
-from database import Base, engine, get_db
-from seed import Facturas, TiposDeDocumentos
+from database import CondicionFrenteIva, Facturas, TiposDeDocumentos, engine
 
-db: Session = next(get_db())
+Session = sessionmaker(bind=engine)
+session = Session()
 
 load_dotenv()
-
 
 download_path = r'C:\Users\{user}\Desktop\Facturas'
 
@@ -490,15 +489,15 @@ class App:
         )
         
         if client_option != -1 and option != -1 and client_id != -1 and products != []:
-            db.add_all(factura)
+            session.add(factura)
+            session.commit()
             
             driver = start_chrome()
             realizar_operacion(driver, client_option=client_option , client_id=client_id, option=option, products=products)
-            self.clear_all()         
+            self.clear_all() 
+            session.close()    
 
 if __name__ == "__main__":
     root = ttk.Window()
     app = App(root)
-    root.mainloop()       
-
-
+    root.mainloop()

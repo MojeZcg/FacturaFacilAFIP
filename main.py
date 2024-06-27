@@ -15,7 +15,7 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 load_dotenv()
 
 
-download_path = r'C:\Users\w10\Desktop\Facturas'
+download_path = r'C:\Users\{user}\Desktop\Facturas'
 
 def start_chrome():
     driver_path = os.getenv('DRIVER_PATH')

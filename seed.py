@@ -10,8 +10,7 @@ from sqlalchemy import (
     Table,
     create_engine,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 # Configurar la base de datos
 engine = create_engine('sqlite:///History.db')

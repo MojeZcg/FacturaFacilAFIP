@@ -56,7 +56,7 @@ def start_chrome():
 
 
 def siguiente(driver):
-     """
+    """
     Hace clic en el botón "Continuar" en la página actual del navegador.
 
     Args:
@@ -64,12 +64,9 @@ def siguiente(driver):
     """
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located(
-            (
-                By.XPATH, '//input[@value="Continuar >"]'
-            )
+            (By.XPATH, '//input[@value="Continuar >"]')
         )
     ).click()
-
 
 def login(driver):
     """
@@ -418,6 +415,9 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
 
 class App:
+    """
+    Crea la clase de la aplicación.
+    """
     def __init__(self, root):
         """
         Inicializa la interfaz de la aplicación.

@@ -1,6 +1,8 @@
 import os
 import sqlite3
+import threading
 import time
+from datetime import datetime
 from tkinter import StringVar, simpledialog
 
 import ttkbootstrap as ttk
@@ -15,12 +17,19 @@ from sqlalchemy.orm import sessionmaker
 
 from database import CondicionFrenteIva, Facturas, TiposDeDocumentos, engine
 
+load_dotenv()
+
 Session = sessionmaker(bind=engine)
 session = Session()
 
-load_dotenv()
+fecha_actual = datetime.now()
+nombre_carpeta = fecha_actual.strftime('%d de %B %Y')
 
-download_path = r'C:\Users\{user}\Desktop\Facturas'
+download_path = os.path.join(r'C:\Users\w10\Desktop\Facturas', nombre_carpeta)
+
+if not os.path.exists(download_path):
+    os.makedirs(download_path)
+
 
 def start_chrome():
     driver_path = os.getenv('DRIVER_PATH')
@@ -33,7 +42,7 @@ def start_chrome():
     }
     
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Ejecutar en modo headless
+    options.add_argument("--headless")
     options.add_argument("--disable-gpu") 
     options.add_experimental_option("prefs", prefs)
     driver = webdriver.Chrome(service=service, options=options)
@@ -108,18 +117,57 @@ def download_day(driver):
     except Exception as e:
         print(f"Ocurrió un error: {e}")
 
+progress_window = None
+
+def center_window(window):
+    window.update_idletasks()
+    width = window.winfo_width()
+    height = window.winfo_height()
+    x_offset = (window.winfo_screenwidth() - width) // 2
+    y_offset = (window.winfo_screenheight() - height) // 2
+    window.geometry(f'+{x_offset}+{y_offset}')
+
+def progress():
+    global progress_window, progress_bar
+    
+    progress_window= ttk.Toplevel(app)
+    progress_window.geometry("280x60")
+    progress_window.title("Progreso de Factura")
+    progress_window.iconbitmap('./static/afip.ico') 
+    
+    progress_label = ttk.Label(progress_window, text='Facturación', font=('TkDefaultFont', 11))
+    progress_label.place(x=20, y=0)
+    
+        
+    progress_bar = ttk.Progressbar(progress_window, orient=ttk.HORIZONTAL, mode='determinate', value=0, maximum=100 ,length=230, bootstyle="success")
+    progress_bar.place(x=20, y=25, height=25)
+    center_window(progress_window)
+
+def set_progress(progress):
+    global progress_bar
+    progress_bar['value'] = progress
+    progress_window.lift()
+    progress_window.update_idletasks()
+
+def stop_progress():
+    global progress_window
+    if progress_window:
+        progress_window.destroy()  # Detiene la barra de progreso
+
 def realizar_operacion(driver, client_option , client_id, option, products):
+    progress()
     try:
         login(driver)
         
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "btn_gen_cmp"))
         ).click()
+        set_progress(5)
         
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "novolveramostrar"))
         ).click()
-        
+        set_progress(10)
         
         puntodeventa = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "puntoDeVenta"))
@@ -128,6 +176,7 @@ def realizar_operacion(driver, client_option , client_id, option, products):
         select.select_by_index(1)
         
         siguiente(driver)
+        set_progress(18)
         
         dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idconcepto"))
@@ -135,6 +184,7 @@ def realizar_operacion(driver, client_option , client_id, option, products):
         
         select = Select(dropdown)
         select.select_by_index(1)
+        set_progress(25)
         
         
         siguiente(driver)
@@ -142,7 +192,7 @@ def realizar_operacion(driver, client_option , client_id, option, products):
         condicion = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idivareceptor"))
         )
-        
+        set_progress(30)
         select = Select(condicion)
         select.select_by_index(option)
         
@@ -150,7 +200,7 @@ def realizar_operacion(driver, client_option , client_id, option, products):
         typeid = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idtipodocreceptor"))
         )
-        
+        set_progress(45)
         selecttype = Select(typeid)
         selecttype.select_by_index(client_option)
         
@@ -158,13 +208,14 @@ def realizar_operacion(driver, client_option , client_id, option, products):
         clientid = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "nrodocreceptor"))
         )
-        
+        set_progress(52)
         clientid.send_keys(client_id)
         
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "formadepago1"))
         ).click()
         
+        set_progress(60)
         siguiente(driver)
         
         for index, product in enumerate(products, start=1):
@@ -201,29 +252,36 @@ def realizar_operacion(driver, client_option , client_id, option, products):
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, '//input[@type="button" and @value="Agregar línea descripción"]'))
                 ).click()
-            
+        
+        set_progress(75)
+        
         siguiente(driver)
         
+        set_progress(80)
+        
         try:
-            # Espera explícita para que el botón "Confirmar Datos..." sea clickable
-            #confirmar_datos_button = WebDriverWait(driver, 10).until(
-                #EC.element_to_be_clickable((By.XPATH, '//input[@type="button" and @value="Confirmar Datos..."]'))
-            #)
-            #confirmar_datos_button.click()
-
-            # Espera a que aparezca la alerta y acéptala
-            # WebDriverWait(driver, 10).until(EC.alert_is_present())
-            # alert = driver.switch_to.alert
-            # alert.accept()
-
-            # Espera explícita para que el botón "Imprimir..." sea clickable
-            # imprimir_button = WebDriverWait(driver, 10).until(
-                # EC.element_to_be_clickable((By.XPATH, '//input[@type="button" and @value="Imprimir..."]'))
             
+            confirmar_datos_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//input[@type="button" and @value="Confirmar Datos..."]'))
+            )
+            confirmar_datos_button.click()
             
-            #) imprimir_button.click()
+            set_progress(85)
             
-            time.sleep(20)
+            WebDriverWait(driver, 10).until(EC.alert_is_present())
+            alert = driver.switch_to.alert
+            alert.accept()
+            
+            set_progress(90)
+            
+            imprimir_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//input[@type="button" and @value="Imprimir..."]'))
+            ) 
+            imprimir_button.click()
+            
+            set_progress(95)
+            time.sleep(6)
+            set_progress(100)
 
         except Exception as e:
             print(f"Ocurrió un error: {e}")
@@ -231,14 +289,15 @@ def realizar_operacion(driver, client_option , client_id, option, products):
     except Exception as e:
         print(f"Ocurrió un error: {e}")
     finally:
-        # Cerrar Chrome
+        # Cerrar Chrome y parar el progreso
         driver.quit()
-        
+        stop_progress()
+
 class App:
     def __init__(self, root):
         self.root = root
         
-        # Configuracion de la pestaña
+        # Configuracion de la pestaña root
         self.root.title("Factura Fácil AFIP")
         self.root.iconbitmap('./static/afip.ico') 
         self.root.geometry("612x420")
@@ -246,7 +305,7 @@ class App:
         self.client_options = ('CUIT', 'CUIL', 'DNI')
         self.client_var = ttk.StringVar(value=self.client_options[0])
         
-        # Crear campos de entrada de Cuil
+        # Crear campos de entrada del id del cliente
         ttk.Label(root, text="Identificador del cliente:").place(x=10, y=10)
         self.client_type = ttk.OptionMenu(root, self.client_var, self.client_options[0], *self.client_options,  bootstyle="dark")
         self.client_type.place(x=10, y=32, width=75)
@@ -282,7 +341,7 @@ class App:
         self.tree.place(x=5, y=75, width=600)
         
         # Crear campo y opciones para el OptionMenu
-        self.common_products = ('Revelado de Fotografias', 'Laser', 'Sublimación')
+        self.common_products = ('Fotos Carnet', 'Revelado de Fotos', 'Servicio Laser', 'Estampados')
         
         ttk.Label(root, text="Nombre de producto:").place(x=10, y=265)
         self.name = ttk.Combobox(root,bootstyle="secondary", values=self.common_products)
@@ -316,7 +375,9 @@ class App:
         self.error_label.place(x=330, y=390)
         
         self.raw_client_id = ""
-    
+        
+        center_window(self.root)
+        
     def format_client_id(self, *args):   
         client_var = self.client_var.get()
         if client_var in ('CUIT', 'CUIL'):
@@ -374,6 +435,7 @@ class App:
                 self.name.delete(0, "end")
                 self.quantity.delete(0, "end")
                 self.priceu.delete(0, "end")
+                self.error_label.config(text="")
             except ValueError:
                 self.error_label.config(text='La Cantidad o el Precio Unitario no es un numero')
     
@@ -463,12 +525,14 @@ class App:
         self.name.delete(0, "end")
         self.quantity.delete(0, "end")
         self.priceu.delete(0, "end")
+        self.error_label.config(text="")
     
     def download(self):
         driver = start_chrome()
         download_day(driver)
       
     def send(self):
+        
         client_id = self.validate_client_id()
         client_option = self.get_client_id_option()
         option = self.get_selected_option()
@@ -494,6 +558,7 @@ class App:
             
             driver = start_chrome()
             realizar_operacion(driver, client_option=client_option , client_id=client_id, option=option, products=products)
+            
             self.clear_all() 
             session.close()    
 

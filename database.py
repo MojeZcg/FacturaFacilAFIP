@@ -2,6 +2,7 @@
 Create a database with id_types and condition_iva
 """
 
+import dataclasses
 from datetime import datetime
 
 from sqlalchemy import (
@@ -21,7 +22,6 @@ engine = create_engine('sqlite:///History.db')
 Base = declarative_base()
 
 # Definir el modelo para TiposDeDocumentos
-@dataclasses.dataclass
 class TiposDeDocumentos(Base):
     """
     Clase para representar el modelo de TiposDeDocumentos.

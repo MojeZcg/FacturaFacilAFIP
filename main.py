@@ -36,6 +36,7 @@ APP = None
 PROGRESS_WINDOW = None
 PROGRESS_BAR = None
 ICON_PATH = './static/afip.ico'
+CONDITION_OPTIONS = ['Consumidor Final', 'Iva Responsable Inscripto', 'Iva Sujeto Excento' ]
 
 
 def start_chrome():
@@ -459,11 +460,11 @@ class App:
         self.client_entry.place(x=90, y=32, width=120)
 
         # Crear campo y opciones para el OptionMenu
-        self.option_var = ttk.StringVar(value='Consumidor Final')
+        self.option_var = ttk.StringVar(value=CONDITION_OPTIONS[0])
         self.options = (
-            'Consumidor Final',
-            'Iva Responsable Inscripto',
-            'Iva Sujeto Excento'
+            CONDITION_OPTIONS[0],
+            CONDITION_OPTIONS[1],
+            CONDITION_OPTIONS[2]
         )
 
         ttk.Label(root, text="Condición frente al IVA:").place(x=220, y=10)
@@ -621,6 +622,7 @@ class App:
             *args: Argumentos adicionales que pueden ser pasados a la función, pero no 
                 se utilizan directamente.
         """
+        print(args)
         client_var = self.client_var.get()
         if client_var in ('CUIT', 'CUIL'):
             # Guardar la posición actual del cursor
@@ -771,7 +773,6 @@ class App:
         """
         if self.tree.get_children() == ():
             self.error_label.config(text='Error: No hay productos')
-            return []
         else:
             products = []
             for item in self.tree.get_children():

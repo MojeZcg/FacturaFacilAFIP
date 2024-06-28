@@ -136,51 +136,67 @@ def download_day(driver):
     Args:
         driver (WebDriver): La instancia del controlador de Chrome.
     """
-    no_invoices = True
     progress('Descarga del Dia')
     try:
         login(driver)
+
         set_progress(20)
+
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "btn_consultas"))
         ).click()
+
         dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "idTipoComprobante"))
         )
         set_progress(40)
+
         select = Select(dropdown)
         select.select_by_index(9)
+
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
                 (By.XPATH, '//input[contains(@value, "Buscar")]')
             )
         ).click()
-        set_progress(55)
-        ver_buttons = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located(
-                (By.XPATH, '//input[contains(@value, "Ver")]')
-            )
-        )
-        set_progress(70)
-        no_invoices = False
-        for button in ver_buttons:
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(button)
-            ).click()
-            time.sleep(4)
-        time.sleep(3)
-        delete_files_with_parentheses(download_path)
-        set_progress(100)
 
-    except RuntimeError as e:
-        if no_invoices:
+        set_progress(55)
+
+        try:
+            ver_buttons = WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located(
+                    (By.XPATH, '//input[contains(@value, "Ver")]')
+                )
+            )
+        except RuntimeError as e:
             stop_progress()
             showinfo(
                 title='Descargar Facturas',
                 message='Hoy no hay facturas para descargar.',
             )
-        else:
-            print(f"Ocurrió un error: {e}")
+            print(f'Error: {e}')
+
+        set_progress(70)
+
+
+        for button in ver_buttons:
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(button)
+            ).click()
+
+            time.sleep(4)
+
+        time.sleep(3)
+
+        delete_files_with_parentheses(download_path)
+
+        set_progress(100)
+        stop_progress()
+
+    except RuntimeError as e:
+        print(f"Ocurrió un error: {e}")
+    finally:
+        stop_progress()
 
 
 def download_in_thread():
@@ -260,7 +276,7 @@ def progress(text):
     )
     PROGRESS_BAR.place(x=20, y=25, height=25)
 
-def set_progress(progress):
+def set_progress(p):
     """
     Actualiza el valor de la barra de progreso.
 
@@ -268,7 +284,7 @@ def set_progress(progress):
         progress (int): El valor de progreso que se establecerá en la barra.
     """
     global PROGRESS_BAR
-    PROGRESS_BAR['value'] = progress
+    PROGRESS_BAR['value'] = p
     PROGRESS_WINDOW.lift()
     PROGRESS_WINDOW.update_idletasks()
 
@@ -425,14 +441,14 @@ class App:
     """
     Crea la clase de la aplicación.
     """
-    def __init__(self, root):
+    def __init__(self, r):
         """
         Inicializa la interfaz de la aplicación.
 
         Args:
             root (ttk.Window): La instancia de la ventana raíz de tkinter.
         """
-        self.root = root
+        self.root = r
 
         # Configuracion de la pestaña root
         self.root.title("Factura Fácil AFIP")
@@ -444,9 +460,9 @@ class App:
         self.client_var = ttk.StringVar(value=self.client_options[0])
 
         # Crear campos de entrada del id del cliente
-        ttk.Label(root, text="Identificador del cliente:").place(x=10, y=10)
+        ttk.Label(r, text="Identificador del cliente:").place(x=10, y=10)
         self.client_type = ttk.OptionMenu(
-            root, self.client_var,
+            r, self.client_var,
             self.client_options[0],
             *self.client_options,
             bootstyle="dark"
@@ -456,7 +472,7 @@ class App:
         self.client = ttk.StringVar()
         self.client.trace_add('write', self.format_client_id)
 
-        self.client_entry = ttk.Entry(root, textvariable=self.client)
+        self.client_entry = ttk.Entry(r, textvariable=self.client)
         self.client_entry.place(x=90, y=32, width=120)
 
         # Crear campo y opciones para el OptionMenu
@@ -467,8 +483,8 @@ class App:
             CONDITION_OPTIONS[2]
         )
 
-        ttk.Label(root, text="Condición frente al IVA:").place(x=220, y=10)
-        self.option = ttk.OptionMenu(root,
+        ttk.Label(r, text="Condición frente al IVA:").place(x=220, y=10)
+        self.option = ttk.OptionMenu(r,
                                      self.option_var,
                                      self.options[0],
                                      *self.options,
@@ -481,7 +497,7 @@ class App:
         self.update_client_options(self.options[0])
 
         # Crear tabla
-        self.tree = ttk.Treeview(root,
+        self.tree = ttk.Treeview(r,
                                  bootstyle="dark",
                                  columns=(
                                      "name",
@@ -510,25 +526,25 @@ class App:
             'Estampados'
             )
 
-        ttk.Label(root, text="Nombre de producto:").place(x=10, y=265)
+        ttk.Label(r, text="Nombre de producto:").place(x=10, y=265)
         self.name = ttk.Combobox(
-            root,
+            r,
             bootstyle="secondary",
             values=self.common_products
         )
 
         self.name.place(x=10, y=285, height=25, width=150)
 
-        ttk.Label(root, text="Cantidad:").place(x=10, y=315)
-        self.quantity = ttk.Entry(root, bootstyle="secondary")
+        ttk.Label(r, text="Cantidad:").place(x=10, y=315)
+        self.quantity = ttk.Entry(r, bootstyle="secondary")
         self.quantity.place(x=10, y=335, height=25, width=150)
 
-        ttk.Label(root, text="Precio Unitario:").place(x=10, y=365)
-        self.priceu = ttk.Entry(root, bootstyle="secondary")
+        ttk.Label(r, text="Precio Unitario:").place(x=10, y=365)
+        self.priceu = ttk.Entry(r, bootstyle="secondary")
         self.priceu.place(x=10, y=385, height=25, width=150)
 
         self.add_row_button = ttk.Button(
-            root,
+            r,
             bootstyle="default-outline",
             text="Agregar Producto",
             command=self.add_row
@@ -537,7 +553,7 @@ class App:
         self.add_row_button.place(x=180, y=313, width=140, height=28)
 
         self.remove_row_button = ttk.Button(
-            root,
+            r,
             bootstyle="danger-outline",
             text="Eliminar Seleccionados",
             command=self.delete_rows
@@ -545,19 +561,19 @@ class App:
         self.remove_row_button.place(x=180, y=348, width=140, height=28)
 
         self.remove_all_button = ttk.Button(
-            root,
+            r,
             bootstyle="dark",
             text="Eliminar Todos",
             command=self.delete_all_rows
             )
         self.remove_all_button.place(x=180, y=383, width=140, height=28)
 
-        self.text_total = ttk.Label(root, bootstyle="dark", text='Total: 0$')
+        self.text_total = ttk.Label(r, bootstyle="dark", text='Total: 0$')
         self.text_total.place(x=395, y=265)
 
         # Botón para ejecutar las funciones de Selenium
         self.send_button = ttk.Button(
-            root,
+            r,
             bootstyle="success-outline",
             text="Enviar",
             command=self.send
@@ -565,14 +581,14 @@ class App:
         self.send_button.place(x=485, y=270, width=120)
 
         self.download_button = ttk.Button(
-            root,
+            r,
             bootstyle="secundary-outline",
             text="Descargar facturas",
             command=self.download
         )
         self.download_button.place(x=485, y=310, width=120)
 
-        self.error_label = ttk.Label(root, text='', bootstyle="danger")
+        self.error_label = ttk.Label(r, text='', bootstyle="danger")
         self.error_label.place(x=330, y=390)
 
         self.raw_client_id = ""
@@ -622,17 +638,16 @@ class App:
             *args: Argumentos adicionales que pueden ser pasados a la función, pero no 
                 se utilizan directamente.
         """
-        print(args)
         client_var = self.client_var.get()
+        cursor = self.client_entry.index(ttk.INSERT)
         if client_var in ('CUIT', 'CUIL'):
             # Guardar la posición actual del cursor
-            cursor = self.client_entry.index(ttk.INSERT)
 
             new_value = self.client.get()
             clean = ''.join(filter(str.isdigit, new_value))
 
             # Formatear el valor limpio
-            formatted_value = f"{clean[:2]}-{clean[2:10]}-{clean[10:11]}".strip('-')
+            formatted_value = f"{clean[0:2]}-{clean[2:10]}-{clean[10:11]}"
 
             # Ajustar el valor del campo de entrada
             self.client.set(formatted_value)
@@ -640,18 +655,17 @@ class App:
 
             # Calcular la nueva posición del cursor
             clean_cursor_position = sum(1 for c in new_value[:cursor] if c.isdigit())
-            if clean_cursor_position < 2:
+            if clean_cursor_position <= 2:
                 new_cursor = clean_cursor_position
             elif clean_cursor_position <= 10:
-                new_cursor = clean_cursor_position + 2  # Compensar el primer guion
+                new_cursor = clean_cursor_position + 1  # Compensar el primer guion
             else:
-                new_cursor = clean_cursor_position + 2  # Compensar ambos guiones
-
-            # Asegurar que la posición del cursor no se salga del rango del texto
-            new_cursor = min(new_cursor, len(formatted_value))
+                new_cursor = clean_cursor_position + 2 # Compensar ambos guiones
 
             # Establecer la nueva posición del cursor
             self.client_entry.icursor(new_cursor)
+            if not args:
+                print('noargs')
 
     def update_client_options(self, selected_option):
         """
@@ -661,9 +675,7 @@ class App:
         Args:
             selected_option (str): La condición frente al IVA seleccionada.
         """
-        if selected_option == 'Iva Responsable Inscripto':
-            new_client_options = ('CUIT',)
-        elif selected_option == 'Iva Sujeto Excento':
+        if selected_option == CONDITION_OPTIONS[1] or selected_option == CONDITION_OPTIONS[2]:
             new_client_options = ('CUIT',)
         else:  # Consumidor Final
             new_client_options = ('CUIT', 'CUIL', 'DNI')
@@ -753,13 +765,13 @@ class App:
             int: El índice de la condición frente al IVA seleccionada.
         """
         option_var = self.option_var.get()
-        if option_var == 'Consumidor Final':
+        if option_var == CONDITION_OPTIONS[0]:
             return 3
 
-        if option_var == 'Iva Responsable Inscripto':
+        if option_var == CONDITION_OPTIONS[1]:
             return 1
 
-        if option_var == 'Iva Sujeto Excento':
+        if option_var == CONDITION_OPTIONS[2]:
             return 2
 
         return -1
@@ -857,10 +869,11 @@ class App:
         products = self.get_products()
         totalvalue = 0
 
-        for product in products:
-            price = float(product['Price'])
-            quantity = float(product['Quantity'])
-            totalvalue += (price * quantity)
+        if products:
+            for product in products:
+                price = float(product['Price'])
+                quantity = float(product['Quantity'])
+                totalvalue += (price * quantity)
 
         factura = Facturas(
             id_cliente=client_id,

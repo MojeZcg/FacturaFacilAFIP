@@ -2,7 +2,6 @@
 Create a database with id_types and condition_iva
 """
 
-import dataclasses
 from datetime import datetime
 
 from sqlalchemy import (

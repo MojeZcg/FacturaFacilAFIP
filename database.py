@@ -1,3 +1,7 @@
+"""
+Create a database with id_types and condition_iva
+"""
+
 from datetime import datetime
 
 from sqlalchemy import (

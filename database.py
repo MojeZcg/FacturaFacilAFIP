@@ -18,22 +18,31 @@ Base = declarative_base()
 
 # Definir el modelo para TiposDeDocumentos
 class TiposDeDocumentos(Base):
+    """
+    Clase para representar el modelo de TiposDeDocumentos.
+    """
     __tablename__ = 'TiposDeDocumentos'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     nombre_de_tipo = Column(String, nullable=False)
 
 # Definir el modelo para CondicionFrenteIva
 class CondicionFrenteIva(Base):
+    """
+    Clase para representar el modelo de CondicionFrenteIva.
+    """
     __tablename__ = 'CondicionFrenteIva'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     nombre_de_condicion = Column(String, nullable=False)
 
 # Definir el modelo para Facturas
 class Facturas(Base):
+    """
+    Clase para representar el modelo de Facturas.
+    """
     __tablename__ = 'Facturas'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     id_cliente = Column(String, nullable=True)
     tipo_de_documento_id = Column(Integer, ForeignKey('TiposDeDocumentos.id'), nullable=False)
@@ -52,7 +61,9 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 def inicializar_base_de_datos():
-    # Insertar datos en TiposDeDocumentos
+    """
+    Inicializa la base de datos con datos predeterminados.
+    """
     tipos_documentos = [
         TiposDeDocumentos(nombre_de_tipo='CUIL'),
         TiposDeDocumentos(nombre_de_tipo='CUIT'),
@@ -62,7 +73,6 @@ def inicializar_base_de_datos():
     session.add_all(tipos_documentos)
     session.commit()
 
-    # Insertar datos en CondicionFrenteIva
     condicion_iva = [
         CondicionFrenteIva(nombre_de_condicion='Consumidor Final'),
         CondicionFrenteIva(nombre_de_condicion='Iva Responsable Inscripto'),

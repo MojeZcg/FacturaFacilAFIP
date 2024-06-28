@@ -4,6 +4,9 @@
 ### dotenv ###
 .env
 
+### Database ###
+History.db
+
 ### Tests ###
 test.py
 

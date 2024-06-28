@@ -33,6 +33,12 @@ if not os.path.exists(download_path):
 
 
 def start_chrome():
+    """
+    Inicia una instancia del navegador Chrome con opciones predefinidas.
+
+    Returns:
+        WebDriver: Una instancia del controlador de Chrome.
+    """
     driver_path = os.getenv('DRIVER_PATH')
     service = Service(driver_path)
     prefs = {
@@ -50,14 +56,29 @@ def start_chrome():
 
 
 def siguiente(driver):
+     """
+    Hace clic en el botón "Continuar" en la página actual del navegador.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+    """
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located(
-            (By.XPATH, '//input[@value="Continuar >"]')
+            (
+                By.XPATH, '//input[@value="Continuar >"]'
+            )
         )
     ).click()
 
 
 def login(driver):
+    """
+    Realiza el inicio de sesión en la página de AFIP y navega a la sección
+    correspondiente.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+    """
     driver.get("https://auth.afip.gob.ar/contribuyente_/login.xhtml")
     username = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.NAME, "F1:username"))
@@ -86,6 +107,13 @@ def login(driver):
 
 
 def delete_files_with_parentheses(directory):
+    """
+    Elimina archivos con paréntesis en sus nombres dentro de un directorio
+    especificado.
+
+    Args:
+        directory (str): La ruta del directorio donde se buscarán los archivos.
+    """
     for filename in os.listdir(directory):
         if '(' in filename or ')' in filename:
             file_path = os.path.join(directory, filename)
@@ -96,6 +124,13 @@ def delete_files_with_parentheses(directory):
 
 
 def download_day(driver):
+    """
+    Descarga las facturas del día desde la página de AFIP y las guarda en el
+    directorio predefinido.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+    """
     no_invoices = True
     progress('Descarga del Dia')
     try:
@@ -144,15 +179,22 @@ def download_day(driver):
 
 
 def download_in_thread():
+    """
+    Inicia una nueva instancia del navegador Chrome y descarga las facturas del
+    día en un hilo separado.
+    """
     driver = start_chrome()
     thread = threading.Thread(target=download_day, args=(driver,))
     thread.start()
 
 
-progress_window = None
-
-
 def center_window(window):
+    """
+    Centra una ventana de tkinter en la pantalla.
+
+    Args:
+        window (ttk.Window): La instancia de la ventana de tkinter.
+    """
     window.update_idletasks()
 
     width = window.winfo_width()
@@ -165,6 +207,12 @@ def center_window(window):
 
 
 def progress(text):
+    """
+    Muestra una ventana de progreso con una barra de progreso.
+
+    Args:
+        text (str): El texto que se mostrará en la ventana de progreso.
+    """
     global progress_window, progress_bar
 
     progress_window = ttk.Toplevel(app)
@@ -187,6 +235,15 @@ def progress(text):
 
 
 def in_thread(client_option, client_id, option, products):
+    """
+    Realiza una operación en un hilo separado y muestra la ventana de progreso.
+
+    Args:
+        client_option (int): La opción del cliente.
+        client_id (str): El identificador del cliente.
+        option (int): La opción seleccionada.
+        products (list): La lista de productos.
+    """
     driver = start_chrome()
 
     thread = threading.Thread(
@@ -200,6 +257,12 @@ def in_thread(client_option, client_id, option, products):
 
 
 def set_progress(progress):
+    """
+    Actualiza el valor de la barra de progreso.
+
+    Args:
+        progress (int): El valor de progreso que se establecerá en la barra.
+    """
     global progress_bar
     progress_bar['value'] = progress
     progress_window.lift()
@@ -207,12 +270,26 @@ def set_progress(progress):
 
 
 def stop_progress():
+    """
+    Cierra la ventana de progreso.
+    """
     global progress_window
     if progress_window:
         progress_window.destroy()
 
 
 def realizar_operacion(driver, client_option, client_id, option, products):
+    """
+    Realiza una operación de facturación en la página de AFIP utilizando los
+    datos proporcionados.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+        client_option (int): La opción del cliente.
+        client_id (str): El identificador del cliente.
+        option (int): La opción seleccionada.
+        products (list): La lista de productos.
+    """
     try:
         login(driver)
         WebDriverWait(driver, 10).until(
@@ -342,6 +419,12 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
 class App:
     def __init__(self, root):
+        """
+        Inicializa la interfaz de la aplicación.
+
+        Args:
+            root (ttk.Window): La instancia de la ventana raíz de tkinter.
+        """
         self.root = root
 
         # Configuracion de la pestaña root
@@ -541,6 +624,13 @@ class App:
             self.client_entry.icursor(new)
 
     def update_client_options(self, selected_option):
+        """
+        Actualiza las opciones del identificador del cliente en función de la
+        condición frente al IVA seleccionada.
+
+        Args:
+            selected_option (str): La condición frente al IVA seleccionada.
+        """
         if selected_option == 'Iva Responsable Inscripto':
             new_client_options = ('CUIT',)
         elif selected_option == 'Iva Sujeto Excento':
@@ -563,6 +653,9 @@ class App:
         self.client_var.set(new_client_options[0])
 
     def add_row(self):
+        """
+        Agrega un producto a la tabla de productos.
+        """
         if self.name.get() == '' or self.quantity.get() == '' or self.priceu.get() == '':
             self.error_label.config(
                 text="Error: Falta informacion en el producto"
@@ -593,14 +686,26 @@ class App:
                 )
 
     def delete_rows(self):
+        """
+        Elimina los productos seleccionados de la tabla de productos.
+        """
         for selected_item in self.tree.selection():
             self.tree.delete(selected_item)
 
     def delete_all_rows(self):
+        """
+        Elimina todos los productos de la tabla de productos.
+        """
         for item in self.tree.get_children():
             self.tree.delete(item)
 
     def get_client_id_option(self):
+        """
+        Obtiene el índice de la opción del identificador del cliente.
+
+        Returns:
+            int: El índice de la opción del identificador del cliente.
+        """
         client_var = self.client_var.get()
 
         if client_var == 'CUIT':
@@ -613,6 +718,12 @@ class App:
             return -1
 
     def get_selected_option(self):
+        """
+        Obtiene el índice de la condición frente al IVA seleccionada.
+
+        Returns:
+            int: El índice de la condición frente al IVA seleccionada.
+        """
         option_var = self.option_var.get()
         if option_var == 'Consumidor Final':
             return 3
@@ -624,6 +735,12 @@ class App:
             return -1
 
     def get_products(self):
+        """
+        Obtiene la lista de productos de la tabla de productos.
+
+        Returns:
+            list: La lista de productos.
+        """
         if self.tree.get_children() == ():
             self.error_label.config(text='Error: No hay productos')
             return []
@@ -648,6 +765,13 @@ class App:
             return products
 
     def validate_client_id(self):
+        """
+        Valida el identificador del cliente.
+
+        Returns:
+            str: El identificador del cliente si es válido.
+            int: -1 si el identificador del cliente no es válido.
+        """
         FORMAT_ERROR = 'El id del cliente (CUIT, CUIL o DNI) no es valido.'
 
         client_id = self.raw_client_id
@@ -677,6 +801,9 @@ class App:
             return -1
 
     def clear_all(self):
+        """
+        Limpia todos los campos de entrada y la tabla de productos.
+        """
         self.delete_all_rows()
         self.raw_client_id = ''
         self.client_entry.delete(0, "end")
@@ -686,9 +813,16 @@ class App:
         self.error_label.config(text="")
 
     def download(self):
+        """
+        Descarga las facturas en un hilo separado.
+        """
         download_in_thread()
 
     def send(self):
+        """
+        Envía los datos de facturación a la página de AFIP y guarda la factura en la
+        base de datos.
+        """
         client_id = self.validate_client_id()
         client_option = self.get_client_id_option()
         option = self.get_selected_option()

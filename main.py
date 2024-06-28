@@ -31,6 +31,8 @@ download_path = os.path.join(r'C:\Users\w10\Desktop\Facturas', nombre_carpeta)
 if not os.path.exists(download_path):
     os.makedirs(download_path)
 
+PROGRESS_WINDOW = None
+PROGRESS_BAR = None
 
 def start_chrome():
     """
@@ -67,6 +69,7 @@ def siguiente(driver):
             (By.XPATH, '//input[@value="Continuar >"]')
         )
     ).click()
+
 
 def login(driver):
     """
@@ -164,7 +167,7 @@ def download_day(driver):
         delete_files_with_parentheses(download_path)
         set_progress(100)
 
-    except Exception as e:
+    except RuntimeError as e:
         if no_invoices:
             stop_progress()
             showinfo(
@@ -203,32 +206,6 @@ def center_window(window):
     window.geometry(f'+{x_offset}+{y_offset}')
 
 
-def progress(text):
-    """
-    Muestra una ventana de progreso con una barra de progreso.
-
-    Args:
-        text (str): El texto que se mostrará en la ventana de progreso.
-    """
-    global progress_window, progress_bar
-
-    progress_window = ttk.Toplevel(app)
-    progress_window.geometry("280x60")
-    progress_window.title("Progreso de Factura")
-    progress_window.iconbitmap(ICON_PATH)
-
-    progress_label = ttk.Label(
-        progress_window,
-        text=text,
-        font=('TkDefaultFont', 11)
-    )
-    progress_label.place(x=20, y=0)
-
-    progress_bar = ttk.Progressbar(
-        progress_window, orient=ttk.HORIZONTAL, mode='determinate',
-        value=0, maximum=100, length=230, bootstyle="success"
-    )
-    progress_bar.place(x=20, y=25, height=25)
 
 
 def in_thread(client_option, client_id, option, products):
@@ -260,19 +237,19 @@ def set_progress(progress):
     Args:
         progress (int): El valor de progreso que se establecerá en la barra.
     """
-    global progress_bar
-    progress_bar['value'] = progress
-    progress_window.lift()
-    progress_window.update_idletasks()
+    global PROGRESS_BAR
+    PROGRESS_BAR['value'] = progress
+    PROGRESS_WINDOW.lift()
+    PROGRESS_WINDOW.update_idletasks()
 
 
 def stop_progress():
     """
     Cierra la ventana de progreso.
     """
-    global progress_window
-    if progress_window:
-        progress_window.destroy()
+    global PROGRESS_WINDOW
+    if PROGRESS_WINDOW:
+        PROGRESS_WINDOW.destroy()
 
 
 def realizar_operacion(driver, client_option, client_id, option, products):
@@ -403,10 +380,10 @@ def realizar_operacion(driver, client_option, client_id, option, products):
             time.sleep(6)
             set_progress(100)
 
-        except Exception as e:
+        except RuntimeError as e:
             print(f"Ocurrió un error: {e}")
 
-    except Exception as e:
+    except RuntimeError as e:
         print(f"Ocurrió un error: {e}")
     finally:
         # Cerrar Chrome y parar el progreso
@@ -573,6 +550,16 @@ class App:
         center_window(self.root)
 
     def obtener_valores_columna(self):
+        """
+        Obtiene los valores de una columna específica del widget 'tree'.
+
+        Recorre todos los elementos del widget 'tree' y extrae los valores de la
+        cuarta columna ('values')[3]. Luego, agrega estos valores a una lista y 
+        la devuelve.
+
+        Returns:
+            list: Una lista de valores de la cuarta columna de cada elemento del 'tree'.
+        """
         valores = []
         for item_id in self.tree.get_children():
             valor_columna = self.tree.item(item_id, 'values')[3]
@@ -580,6 +567,13 @@ class App:
         return valores
 
     def actualizar_label(self):
+        """
+        Actualiza el texto de un label con la suma de los valores de una columna específica.
+
+        Obtiene los valores de la cuarta columna de cada elemento del widget 'tree' 
+        usando la función 'obtener_valores_columna', los suma y actualiza el texto del 
+        widget 'text_total' para mostrar el total en dólares.
+        """
         valores = self.obtener_valores_columna()
         resultado = 0
         for valor in valores:
@@ -587,6 +581,17 @@ class App:
         self.text_total.config(text=f"Total: {resultado}$")
 
     def format_client_id(self, *args):
+        """
+        Formatea el ID del cliente en el formato 'XX-XXXXXXXX-X' para CUIT o CUIL.
+
+        Dependiendo del tipo de cliente seleccionado (CUIT o CUIL), limpia y formatea
+        el valor del ID del cliente ingresado en el campo de entrada. Mantiene la 
+        posición actual del cursor adecuada al nuevo formato.
+
+        Args:
+            *args: Argumentos adicionales que pueden ser pasados a la función, pero no 
+                se utilizan directamente.
+        """
         client_var = self.client_var.get()
         if client_var in ('CUIT', 'CUIL'):
             # Guardar la posición actual del cursor
@@ -858,3 +863,30 @@ if __name__ == "__main__":
     root = ttk.Window()
     app = App(root)
     root.mainloop()
+
+def progress(text):
+    """
+    Muestra una ventana de progreso con una barra de progreso.
+
+    Args:
+        text (str): El texto que se mostrará en la ventana de progreso.
+    """
+    global PROGRESS_WINDOW, PROGRESS_BAR
+
+    PROGRESS_WINDOW = ttk.Toplevel(app)
+    PROGRESS_WINDOW.geometry("280x60")
+    PROGRESS_WINDOW.title("Progreso de Factura")
+    PROGRESS_WINDOW.iconbitmap(ICON_PATH)
+
+    progress_label = ttk.Label(
+        PROGRESS_WINDOW,
+        text=text,
+        font=('TkDefaultFont', 11)
+    )
+    progress_label.place(x=20, y=0)
+
+    PROGRESS_BAR = ttk.Progressbar(
+        PROGRESS_WINDOW, orient=ttk.HORIZONTAL, mode='determinate',
+        value=0, maximum=100, length=230, bootstyle="success"
+    )
+    PROGRESS_BAR.place(x=20, y=25, height=25)

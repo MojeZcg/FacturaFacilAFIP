@@ -116,7 +116,7 @@ def delete_files_with_parentheses(directory):
             file_path = os.path.join(directory, filename)
             try:
                 os.remove(file_path)
-            except Exception as e:
+            except OSError as e:
                 print(f"Error deleting {file_path}: {e}")
 
 
@@ -640,14 +640,10 @@ class App:
 
         # Actualizar las opciones del primer OptionMenu
         menu = self.client_type["menu"]
-        menu.delete(0, "end")
+        menu.delete(0, "end") # pylint: disable=no-member
 
         for option in new_client_options:
-            menu.add_command(
-                label=option,
-                command=lambda
-                value=option: self.client_var.set(value)
-                )
+            menu.add_command(label=option, command=lambda value=option: self.client_var.set(value)) # pylint: disable=no-member
 
         # Establecer la opción predeterminada
         self.client_var.set(new_client_options[0])
@@ -727,12 +723,14 @@ class App:
         option_var = self.option_var.get()
         if option_var == 'Consumidor Final':
             return 3
-        elif option_var == 'Iva Responsable Inscripto':
+
+        if option_var == 'Iva Responsable Inscripto':
             return 1
-        elif option_var == 'Iva Sujeto Excento':
+
+        if option_var == 'Iva Sujeto Excento':
             return 2
-        else:
-            return -1
+
+        return -1
 
     def get_products(self):
         """
@@ -772,7 +770,7 @@ class App:
             str: El identificador del cliente si es válido.
             int: -1 si el identificador del cliente no es válido.
         """
-        FORMAT_ERROR = 'El id del cliente (CUIT, CUIL o DNI) no es valido.'
+        format_error = 'El id del cliente (CUIT, CUIL o DNI) no es valido.'
 
         client_id = self.raw_client_id
         client_type_var = self.client_var.get()
@@ -790,15 +788,14 @@ class App:
             return -1
 
         if len(client_id) not in valid_lengths[client_type_var]:
-            self.error_label.config(text=FORMAT_ERROR)
+            self.error_label.config(text=format_error)
             return -1
 
         try:
             int(client_id)
             return client_id
         except ValueError:
-            self.error_label.config(text=FORMAT_ERROR)
-            return -1
+            self.error_label.config(text=format_error)
 
     def clear_all(self):
         """
@@ -842,7 +839,7 @@ class App:
             valor_total=totalvalue,
         )
 
-        if client_option != -1 and option != -1 and client_id != -1 and products != []:
+        if client_option != -1 and option != -1 and client_id != -1 and products:
             session.add(factura)
             session.commit()
 

@@ -2,6 +2,7 @@
 Create a database with id_types and condition_iva
 """
 
+import dataclasses
 from datetime import datetime
 
 from sqlalchemy import (
@@ -21,6 +22,7 @@ engine = create_engine('sqlite:///History.db')
 Base = declarative_base()
 
 # Definir el modelo para TiposDeDocumentos
+@dataclasses.dataclass
 class TiposDeDocumentos(Base):
     """
     Clase para representar el modelo de TiposDeDocumentos.
@@ -31,6 +33,7 @@ class TiposDeDocumentos(Base):
     nombre_de_tipo = Column(String, nullable=False)
 
 # Definir el modelo para CondicionFrenteIva
+@dataclasses.dataclass
 class CondicionFrenteIva(Base):
     """
     Clase para representar el modelo de CondicionFrenteIva.
@@ -41,6 +44,7 @@ class CondicionFrenteIva(Base):
     nombre_de_condicion = Column(String, nullable=False)
 
 # Definir el modelo para Facturas
+@dataclasses.dataclass
 class Facturas(Base):
     """
     Clase para representar el modelo de Facturas.

@@ -37,6 +37,389 @@ PROGRESS_WINDOW = None
 PROGRESS_BAR = None
 ICON_PATH = './static/afip.ico'
 
+
+def start_chrome():
+    """
+    Inicia una instancia del navegador Chrome con opciones predefinidas.
+
+    Returns:
+        WebDriver: Una instancia del controlador de Chrome.
+    """
+    driver_path = os.getenv('DRIVER_PATH')
+    service = Service(driver_path)
+    prefs = {
+        "download.default_directory": download_path,
+        "download.prompt_for_download": False,
+        "directory_upgrade": True,
+        "safebrowsing.enabled": True
+    }
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_experimental_option("prefs", prefs)
+    driver = webdriver.Chrome(service=service, options=options)
+    return driver
+
+
+def siguiente(driver):
+    """
+    Hace clic en el botón "Continuar" en la página actual del navegador.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+    """
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.XPATH, '//input[@value="Continuar >"]')
+        )
+    ).click()
+
+
+def login(driver):
+    """
+    Realiza el inicio de sesión en la página de AFIP y navega a la sección
+    correspondiente.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+    """
+    driver.get("https://auth.afip.gob.ar/contribuyente_/login.xhtml")
+    username = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "F1:username"))
+    )
+    # Ingresar el Cuil Correspondiente
+    username.clear()
+    username.send_keys(os.getenv('AFIP_CUIL'))
+    username.send_keys(Keys.RETURN)
+    # Selecciona el campo Clave
+    password = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "F1:password"))
+    )
+    # Ingresar la Clave Correspondiente
+    password.clear()
+    password.send_keys(os.getenv('AFIP_KEY'))
+    password.send_keys(Keys.RETURN)
+    # Ingresa a responsable inscripto
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "a.full-width"))
+    ).click()
+    time.sleep(1)
+    driver.switch_to.window(driver.window_handles[-1])
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input.btn_empresa"))
+    ).click()
+
+
+def delete_files_with_parentheses(directory):
+    """
+    Elimina archivos con paréntesis en sus nombres dentro de un directorio
+    especificado.
+
+    Args:
+        directory (str): La ruta del directorio donde se buscarán los archivos.
+    """
+    for filename in os.listdir(directory):
+        if '(' in filename or ')' in filename:
+            file_path = os.path.join(directory, filename)
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                print(f"Error deleting {file_path}: {e}")
+
+
+def download_day(driver):
+    """
+    Descarga las facturas del día desde la página de AFIP y las guarda en el
+    directorio predefinido.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+    """
+    no_invoices = True
+    progress('Descarga del Dia')
+    try:
+        login(driver)
+        set_progress(20)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "btn_consultas"))
+        ).click()
+        dropdown = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "idTipoComprobante"))
+        )
+        set_progress(40)
+        select = Select(dropdown)
+        select.select_by_index(9)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, '//input[contains(@value, "Buscar")]')
+            )
+        ).click()
+        set_progress(55)
+        ver_buttons = WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located(
+                (By.XPATH, '//input[contains(@value, "Ver")]')
+            )
+        )
+        set_progress(70)
+        no_invoices = False
+        for button in ver_buttons:
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(button)
+            ).click()
+            time.sleep(4)
+        time.sleep(3)
+        delete_files_with_parentheses(download_path)
+        set_progress(100)
+
+    except RuntimeError as e:
+        if no_invoices:
+            stop_progress()
+            showinfo(
+                title='Descargar Facturas',
+                message='Hoy no hay facturas para descargar.',
+            )
+        else:
+            print(f"Ocurrió un error: {e}")
+
+
+def download_in_thread():
+    """
+    Inicia una nueva instancia del navegador Chrome y descarga las facturas del
+    día en un hilo separado.
+    """
+    driver = start_chrome()
+    thread = threading.Thread(target=download_day, args=(driver,))
+    thread.start()
+
+
+def center_window(window):
+    """
+    Centra una ventana de tkinter en la pantalla.
+
+    Args:
+        window (ttk.Window): La instancia de la ventana de tkinter.
+    """
+    window.update_idletasks()
+
+    width = window.winfo_width()
+    height = window.winfo_height()
+
+    x_offset = (window.winfo_screenwidth() - width) // 2
+    y_offset = (window.winfo_screenheight() - height) // 2
+
+    window.geometry(f'+{x_offset}+{y_offset}')
+
+
+def in_thread(client_option, client_id, option, products):
+    """
+    Realiza una operación en un hilo separado y muestra la ventana de progreso.
+
+    Args:
+        client_option (int): La opción del cliente.
+        client_id (str): El identificador del cliente.
+        option (int): La opción seleccionada.
+        products (list): La lista de productos.
+    """
+    driver = start_chrome()
+
+    thread = threading.Thread(
+        target=realizar_operacion,
+        args=(driver, client_option, client_id, option, products,)
+        )
+    threadprogress = threading.Thread(target=progress, args=('Facturacion',))
+
+    thread.start()
+    threadprogress.start()
+
+
+def progress(text):
+    """
+    Muestra una ventana de progreso con una barra de progreso.
+
+    Args:
+        text (str): El texto que se mostrará en la ventana de progreso.
+    """
+    global PROGRESS_WINDOW, PROGRESS_BAR
+
+    PROGRESS_WINDOW = ttk.Toplevel(APP)
+    PROGRESS_WINDOW.geometry("280x60")
+    PROGRESS_WINDOW.title("Progreso de Factura")
+    PROGRESS_WINDOW.iconbitmap(ICON_PATH)
+
+    progress_label = ttk.Label(
+        PROGRESS_WINDOW,
+        text=text,
+        font=('TkDefaultFont', 11)
+    )
+    progress_label.place(x=20, y=0)
+
+    PROGRESS_BAR = ttk.Progressbar(
+        PROGRESS_WINDOW, orient=ttk.HORIZONTAL, mode='determinate',
+        value=0, maximum=100, length=230, bootstyle="success"
+    )
+    PROGRESS_BAR.place(x=20, y=25, height=25)
+
+def set_progress(progress):
+    """
+    Actualiza el valor de la barra de progreso.
+
+    Args:
+        progress (int): El valor de progreso que se establecerá en la barra.
+    """
+    global PROGRESS_BAR
+    PROGRESS_BAR['value'] = progress
+    PROGRESS_WINDOW.lift()
+    PROGRESS_WINDOW.update_idletasks()
+
+
+def stop_progress():
+    """
+    Cierra la ventana de progreso.
+    """
+    global PROGRESS_WINDOW
+    if PROGRESS_WINDOW:
+        PROGRESS_WINDOW.destroy()
+
+
+def realizar_operacion(driver, client_option, client_id, option, products):
+    """
+    Realiza una operación de facturación en la página de AFIP utilizando los
+    datos proporcionados.
+
+    Args:
+        driver (WebDriver): La instancia del controlador de Chrome.
+        client_option (int): La opción del cliente.
+        client_id (str): El identificador del cliente.
+        option (int): La opción seleccionada.
+        products (list): La lista de productos.
+    """
+    try:
+        login(driver)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "btn_gen_cmp"))
+        ).click()
+        set_progress(5)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "novolveramostrar"))
+        ).click()
+        set_progress(10)
+        puntodeventa = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "puntoDeVenta"))
+        )
+        select = Select(puntodeventa)
+        select.select_by_index(1)
+        siguiente(driver)
+        set_progress(18)
+        dropdown = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "idconcepto"))
+        )
+        select = Select(dropdown)
+        select.select_by_index(1)
+        set_progress(25)
+        siguiente(driver)
+        condicion = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "idivareceptor"))
+        )
+        set_progress(30)
+        select = Select(condicion)
+        select.select_by_index(option)
+        typeid = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "idtipodocreceptor"))
+        )
+        set_progress(45)
+        selecttype = Select(typeid)
+        selecttype.select_by_index(client_option)
+        clientid = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "nrodocreceptor"))
+        )
+        set_progress(52)
+        clientid.send_keys(client_id)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "formadepago1"))
+        ).click()
+        set_progress(60)
+        siguiente(driver)
+        for index, product in enumerate(products, start=1):
+            clientid = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.ID, f"detalle_descripcion{index}")
+                    )
+            )
+            clientid.send_keys(product['Product'])
+            quantity = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.ID, f"detalle_cantidad{index}")
+                    )
+            )
+            quantity.clear()
+            quantity.send_keys(product['Quantity'])
+            condicion = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.ID, f"detalle_medida{index}")
+                    )
+            )
+            select = Select(condicion)
+            select.select_by_index(7)
+            preciou = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.ID, f"detalle_precio{index}")
+                    )
+            )
+            preciou.send_keys(product['Price'])
+            if len(products) >= index + 1:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (
+                            By.XPATH,
+                            '//input[@type="button" and @value="Agregar línea descripción"]'
+                        )
+                    )
+                ).click()
+        set_progress(75)
+
+        siguiente(driver)
+
+        set_progress(80)
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(
+                    (
+                        By.XPATH,
+                        '//input[@type="button" and @value="Confirmar Datos..."]'
+                    )
+                    )
+            ).click()
+
+            set_progress(85)
+
+            WebDriverWait(driver, 10).until(EC.alert_is_present())
+            alert = driver.switch_to.alert
+            alert.accept()
+
+            set_progress(90)
+
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH,
+                     '//input[@type="button" and @value="Imprimir..."]')
+                )
+            ).click()
+
+            set_progress(95)
+            time.sleep(6)
+            set_progress(100)
+
+        except RuntimeError as e:
+            print(f"Ocurrió un error: {e}")
+
+    except RuntimeError as e:
+        print(f"Ocurrió un error: {e}")
+    finally:
+        # Cerrar Chrome y parar el progreso
+        driver.quit()
+        stop_progress()
+
+
 class App:
     """
     Crea la clase de la aplicación.
@@ -70,7 +453,7 @@ class App:
         self.client_type.place(x=10, y=32, width=75)
 
         self.client = ttk.StringVar()
-        self.client.trace_add('write', self.format_client_id())
+        self.client.trace_add('write', self.format_client_id)
 
         self.client_entry = ttk.Entry(root, textvariable=self.client)
         self.client_entry.place(x=90, y=32, width=120)
@@ -247,32 +630,26 @@ class App:
             clean = ''.join(filter(str.isdigit, new_value))
 
             # Formatear el valor limpio
-            formatted_value = f"{clean[:2]}-{clean[2:10]}-{clean[10:11]}"
+            formatted_value = f"{clean[:2]}-{clean[2:10]}-{clean[10:11]}".strip('-')
 
             # Ajustar el valor del campo de entrada
-            self.client.set(formatted_value.strip('-'))
+            self.client.set(formatted_value)
             self.raw_client_id = clean
 
-            # Ajustar la posición del cursor
-            formatted_parts = [
-                clean[:2],
-                clean[2:10],
-                clean[10:11]
-                ]
+            # Calcular la nueva posición del cursor
+            clean_cursor_position = sum(1 for c in new_value[:cursor] if c.isdigit())
+            if clean_cursor_position < 2:
+                new_cursor = clean_cursor_position
+            elif clean_cursor_position <= 10:
+                new_cursor = clean_cursor_position + 2  # Compensar el primer guion
+            else:
+                new_cursor = clean_cursor_position + 2  # Compensar ambos guiones
 
-            new = (
-                cursor +
-                sum(len(part) + 1 for part in formatted_parts if part) -
-                (cursor > 2) -
-                (cursor > 10)
-            )
-
-            # Asegurar que la posición del
-            # cursor no se salga del rango del texto
-            new = min(new, len(formatted_value.strip('-')))
+            # Asegurar que la posición del cursor no se salga del rango del texto
+            new_cursor = min(new_cursor, len(formatted_value))
 
             # Establecer la nueva posición del cursor
-            self.client_entry.icursor(new)
+            self.client_entry.icursor(new_cursor)
 
     def update_client_options(self, selected_option):
         """
@@ -507,393 +884,7 @@ class App:
             session.close()
 
 
-def start_chrome():
-    """
-    Inicia una instancia del navegador Chrome con opciones predefinidas.
-
-    Returns:
-        WebDriver: Una instancia del controlador de Chrome.
-    """
-    driver_path = os.getenv('DRIVER_PATH')
-    service = Service(driver_path)
-    prefs = {
-        "download.default_directory": download_path,
-        "download.prompt_for_download": False,
-        "directory_upgrade": True,
-        "safebrowsing.enabled": True
-    }
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_experimental_option("prefs", prefs)
-    driver = webdriver.Chrome(service=service, options=options)
-    return driver
-
-
-def siguiente(driver):
-    """
-    Hace clic en el botón "Continuar" en la página actual del navegador.
-
-    Args:
-        driver (WebDriver): La instancia del controlador de Chrome.
-    """
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located(
-            (By.XPATH, '//input[@value="Continuar >"]')
-        )
-    ).click()
-
-
-def login(driver):
-    """
-    Realiza el inicio de sesión en la página de AFIP y navega a la sección
-    correspondiente.
-
-    Args:
-        driver (WebDriver): La instancia del controlador de Chrome.
-    """
-    driver.get("https://auth.afip.gob.ar/contribuyente_/login.xhtml")
-    username = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "F1:username"))
-    )
-    # Ingresar el Cuil Correspondiente
-    username.clear()
-    username.send_keys(os.getenv('AFIP_CUIL'))
-    username.send_keys(Keys.RETURN)
-    # Selecciona el campo Clave
-    password = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "F1:password"))
-    )
-    # Ingresar la Clave Correspondiente
-    password.clear()
-    password.send_keys(os.getenv('AFIP_KEY'))
-    password.send_keys(Keys.RETURN)
-    # Ingresa a responsable inscripto
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "a.full-width"))
-    ).click()
-    time.sleep(1)
-    driver.switch_to.window(driver.window_handles[-1])
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input.btn_empresa"))
-    ).click()
-
-
-def delete_files_with_parentheses(directory):
-    """
-    Elimina archivos con paréntesis en sus nombres dentro de un directorio
-    especificado.
-
-    Args:
-        directory (str): La ruta del directorio donde se buscarán los archivos.
-    """
-    for filename in os.listdir(directory):
-        if '(' in filename or ')' in filename:
-            file_path = os.path.join(directory, filename)
-            try:
-                os.remove(file_path)
-            except OSError as e:
-                print(f"Error deleting {file_path}: {e}")
-
-
-def download_day(driver):
-    """
-    Descarga las facturas del día desde la página de AFIP y las guarda en el
-    directorio predefinido.
-
-    Args:
-        driver (WebDriver): La instancia del controlador de Chrome.
-    """
-    no_invoices = True
-    progress('Descarga del Dia')
-    try:
-        login(driver)
-        set_progress(20)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "btn_consultas"))
-        ).click()
-        dropdown = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "idTipoComprobante"))
-        )
-        set_progress(40)
-        select = Select(dropdown)
-        select.select_by_index(9)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(
-                (By.XPATH, '//input[contains(@value, "Buscar")]')
-            )
-        ).click()
-        set_progress(55)
-        ver_buttons = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located(
-                (By.XPATH, '//input[contains(@value, "Ver")]')
-            )
-        )
-        set_progress(70)
-        no_invoices = False
-        for button in ver_buttons:
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(button)
-            ).click()
-            time.sleep(4)
-        time.sleep(3)
-        delete_files_with_parentheses(download_path)
-        set_progress(100)
-
-    except RuntimeError as e:
-        if no_invoices:
-            stop_progress()
-            showinfo(
-                title='Descargar Facturas',
-                message='Hoy no hay facturas para descargar.',
-            )
-        else:
-            print(f"Ocurrió un error: {e}")
-
-
-def download_in_thread():
-    """
-    Inicia una nueva instancia del navegador Chrome y descarga las facturas del
-    día en un hilo separado.
-    """
-    driver = start_chrome()
-    thread = threading.Thread(target=download_day, args=(driver,))
-    thread.start()
-
-
-def center_window(window):
-    """
-    Centra una ventana de tkinter en la pantalla.
-
-    Args:
-        window (ttk.Window): La instancia de la ventana de tkinter.
-    """
-    window.update_idletasks()
-
-    width = window.winfo_width()
-    height = window.winfo_height()
-
-    x_offset = (window.winfo_screenwidth() - width) // 2
-    y_offset = (window.winfo_screenheight() - height) // 2
-
-    window.geometry(f'+{x_offset}+{y_offset}')
-
-
-def in_thread(client_option, client_id, option, products):
-    """
-    Realiza una operación en un hilo separado y muestra la ventana de progreso.
-
-    Args:
-        client_option (int): La opción del cliente.
-        client_id (str): El identificador del cliente.
-        option (int): La opción seleccionada.
-        products (list): La lista de productos.
-    """
-    driver = start_chrome()
-
-    thread = threading.Thread(
-        target=realizar_operacion,
-        args=(driver, client_option, client_id, option, products,)
-        )
-    threadprogress = threading.Thread(target=progress, args=('Facturacion',))
-
-    thread.start()
-    threadprogress.start()
-
-
-def progress(text):
-    """
-    Muestra una ventana de progreso con una barra de progreso.
-
-    Args:
-        text (str): El texto que se mostrará en la ventana de progreso.
-    """
-    global PROGRESS_WINDOW, PROGRESS_BAR, APP
-
-    PROGRESS_WINDOW = ttk.Toplevel(APP)
-    PROGRESS_WINDOW.geometry("280x60")
-    PROGRESS_WINDOW.title("Progreso de Factura")
-    PROGRESS_WINDOW.iconbitmap(ICON_PATH)
-
-    progress_label = ttk.Label(
-        PROGRESS_WINDOW,
-        text=text,
-        font=('TkDefaultFont', 11)
-    )
-    progress_label.place(x=20, y=0)
-
-    PROGRESS_BAR = ttk.Progressbar(
-        PROGRESS_WINDOW, orient=ttk.HORIZONTAL, mode='determinate',
-        value=0, maximum=100, length=230, bootstyle="success"
-    )
-    PROGRESS_BAR.place(x=20, y=25, height=25)
-
-def set_progress(progress):
-    """
-    Actualiza el valor de la barra de progreso.
-
-    Args:
-        progress (int): El valor de progreso que se establecerá en la barra.
-    """
-    global PROGRESS_BAR
-    PROGRESS_BAR['value'] = progress
-    PROGRESS_WINDOW.lift()
-    PROGRESS_WINDOW.update_idletasks()
-
-
-def stop_progress():
-    """
-    Cierra la ventana de progreso.
-    """
-    global PROGRESS_WINDOW
-    if PROGRESS_WINDOW:
-        PROGRESS_WINDOW.destroy()
-
-
-def realizar_operacion(driver, client_option, client_id, option, products):
-    """
-    Realiza una operación de facturación en la página de AFIP utilizando los
-    datos proporcionados.
-
-    Args:
-        driver (WebDriver): La instancia del controlador de Chrome.
-        client_option (int): La opción del cliente.
-        client_id (str): El identificador del cliente.
-        option (int): La opción seleccionada.
-        products (list): La lista de productos.
-    """
-    try:
-        login(driver)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "btn_gen_cmp"))
-        ).click()
-        set_progress(5)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "novolveramostrar"))
-        ).click()
-        set_progress(10)
-        puntodeventa = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "puntoDeVenta"))
-        )
-        select = Select(puntodeventa)
-        select.select_by_index(1)
-        siguiente(driver)
-        set_progress(18)
-        dropdown = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "idconcepto"))
-        )
-        select = Select(dropdown)
-        select.select_by_index(1)
-        set_progress(25)
-        siguiente(driver)
-        condicion = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "idivareceptor"))
-        )
-        set_progress(30)
-        select = Select(condicion)
-        select.select_by_index(option)
-        typeid = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "idtipodocreceptor"))
-        )
-        set_progress(45)
-        selecttype = Select(typeid)
-        selecttype.select_by_index(client_option)
-        clientid = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "nrodocreceptor"))
-        )
-        set_progress(52)
-        clientid.send_keys(client_id)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "formadepago1"))
-        ).click()
-        set_progress(60)
-        siguiente(driver)
-        for index, product in enumerate(products, start=1):
-            clientid = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_descripcion{index}")
-                    )
-            )
-            clientid.send_keys(product['Product'])
-            quantity = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_cantidad{index}")
-                    )
-            )
-            quantity.clear()
-            quantity.send_keys(product['Quantity'])
-            condicion = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_medida{index}")
-                    )
-            )
-            select = Select(condicion)
-            select.select_by_index(7)
-            preciou = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_precio{index}")
-                    )
-            )
-            preciou.send_keys(product['Price'])
-            if len(products) >= index + 1:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (
-                            By.XPATH,
-                            '//input[@type="button" and @value="Agregar línea descripción"]'
-                        )
-                    )
-                ).click()
-        set_progress(75)
-
-        siguiente(driver)
-
-        set_progress(80)
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(
-                    (
-                        By.XPATH,
-                        '//input[@type="button" and @value="Confirmar Datos..."]'
-                    )
-                    )
-            ).click()
-
-            set_progress(85)
-
-            WebDriverWait(driver, 10).until(EC.alert_is_present())
-            alert = driver.switch_to.alert
-            alert.accept()
-
-            set_progress(90)
-
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH,
-                     '//input[@type="button" and @value="Imprimir..."]')
-                )
-            ).click()
-
-            set_progress(95)
-            time.sleep(6)
-            set_progress(100)
-
-        except RuntimeError as e:
-            print(f"Ocurrió un error: {e}")
-
-    except RuntimeError as e:
-        print(f"Ocurrió un error: {e}")
-    finally:
-        # Cerrar Chrome y parar el progreso
-        driver.quit()
-        stop_progress()
-
-
-
 if __name__ == "__main__":
     root = ttk.Window()
-    global APP
     APP = App(root)
     root.mainloop()
-
-

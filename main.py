@@ -478,10 +478,12 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
 
 class App:
+    # pylint: disable=too-many-instance-attributes
     """
     Crea la clase de la aplicación.
     """
     def __init__(self, r):
+        # pylint: disable=too-many-statements
         """
         Inicializa la interfaz de la aplicación.
 

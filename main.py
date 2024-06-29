@@ -298,6 +298,54 @@ def stop_progress():
         PROGRESS_WINDOW.destroy()
 
 
+def put_all_items(driver, products):
+    """
+    Ingresa una lista de productos en un formulario web usando Selenium.
+
+    Args:
+        driver (selenium.webdriver): El controlador de Selenium WebDriver.
+        products (list): Lista de diccionarios con claves 'Product', 'Quantity', y 'Price'.
+    """
+    for index, product in enumerate(
+        products,
+        start=1
+        ):
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.ID, f"detalle_descripcion{index}")
+            )
+        ).send_keys(product['Product'])
+
+        quantity = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.ID, f"detalle_cantidad{index}")
+            )
+        )
+        quantity.clear()
+        quantity.send_keys(product['Quantity'])
+        select = Select(WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.ID, f"detalle_medida{index}")
+            )
+        ))
+        select.select_by_index(7)
+
+        preciou = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.ID, f"detalle_precio{index}")
+            )
+        )
+        preciou.send_keys(product['Price'])
+        if len(products) >= index + 1:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (
+                        By.XPATH,
+                        '//input[@type="button" and @value="Agregar línea descripción"]'
+                    )
+                )
+            ).click()
+
 def realizar_operacion(driver, client_option, client_id, option, products):
     """
     Realiza una operación de facturación en la página de AFIP utilizando los
@@ -312,86 +360,78 @@ def realizar_operacion(driver, client_option, client_id, option, products):
     """
     try:
         login(driver)
+
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "btn_gen_cmp"))
         ).click()
+
         set_progress(5)
+
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "novolveramostrar"))
         ).click()
+
         set_progress(10)
-        puntodeventa = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "puntoDeVenta"))
+
+        select = Select(
+            WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (
+                    By.NAME,
+                    "puntoDeVenta"
+                    )
+                )
+            )
         )
-        select = Select(puntodeventa)
+
         select.select_by_index(1)
+
         siguiente(driver)
+
         set_progress(18)
-        dropdown = WebDriverWait(driver, 10).until(
+
+        select = Select(WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idconcepto"))
-        )
-        select = Select(dropdown)
+        ))
         select.select_by_index(1)
+
         set_progress(25)
+
         siguiente(driver)
+
         condicion = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idivareceptor"))
         )
-        set_progress(30)
         select = Select(condicion)
+
+        set_progress(30)
+
         select.select_by_index(option)
-        typeid = WebDriverWait(driver, 10).until(
+
+        selecttype = Select(WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idtipodocreceptor"))
-        )
-        set_progress(45)
-        selecttype = Select(typeid)
+        ))
         selecttype.select_by_index(client_option)
+
+        set_progress(45)
+
         clientid = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "nrodocreceptor"))
         )
         set_progress(52)
+
         clientid.send_keys(client_id)
+
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "formadepago1"))
         ).click()
+
         set_progress(60)
+
         siguiente(driver)
-        for index, product in enumerate(products, start=1):
-            clientid = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_descripcion{index}")
-                    )
-            )
-            clientid.send_keys(product['Product'])
-            quantity = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_cantidad{index}")
-                    )
-            )
-            quantity.clear()
-            quantity.send_keys(product['Quantity'])
-            condicion = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_medida{index}")
-                    )
-            )
-            select = Select(condicion)
-            select.select_by_index(7)
-            preciou = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.ID, f"detalle_precio{index}")
-                    )
-            )
-            preciou.send_keys(product['Price'])
-            if len(products) >= index + 1:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (
-                            By.XPATH,
-                            '//input[@type="button" and @value="Agregar línea descripción"]'
-                        )
-                    )
-                ).click()
+
+        put_all_items(driver, products)
+
         set_progress(75)
 
         siguiente(driver)
@@ -675,7 +715,7 @@ class App:
         Args:
             selected_option (str): La condición frente al IVA seleccionada.
         """
-        if selected_option == CONDITION_OPTIONS[1] or selected_option == CONDITION_OPTIONS[2]:
+        if selected_option in {CONDITION_OPTIONS[1], CONDITION_OPTIONS[2]}:
             new_client_options = ('CUIT',)
         else:  # Consumidor Final
             new_client_options = ('CUIT', 'CUIL', 'DNI')
@@ -783,9 +823,8 @@ class App:
         Returns:
             list: La lista de productos.
         """
-        if self.tree.get_children() == ():
-            self.error_label.config(text='Error: No hay productos')
-        else:
+
+        if self.tree.get_children() != ():
             products = []
             for item in self.tree.get_children():
                 item_data = self.tree.item(item, 'values')
@@ -805,7 +844,10 @@ class App:
                     })
             return products
 
-    def validate_client_id(self):
+        self.error_label.config(text='Error: No hay productos')
+        return None
+
+    def validate_client_id(self) -> int | str:
         """
         Valida el identificador del cliente.
 
@@ -839,6 +881,7 @@ class App:
             return client_id
         except ValueError:
             self.error_label.config(text=format_error)
+            return -1
 
     def clear_all(self):
         """

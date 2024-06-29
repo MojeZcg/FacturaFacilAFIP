@@ -12,10 +12,10 @@ DisableProgramGroupPage=yes
 Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{commondesktop}\Factura Facil"; Filename: "{app}\FacturaFacil.exe"; IconFilename: "{app}\static\afip.ico"
+Name: "{commondesktop}\Factura Facil"; Filename: "{app}\FacturaFacilAFIP.exe"; IconFilename: "{app}\static\afip.ico"
 
 [Run]
-Filename: "{app}\FacturaFacil.exe"; Description: "{cm:LaunchProgram,Factura Facil}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\FacturaFacilAFIP.exe"; Description: "{cm:LaunchProgram,Factura Facil}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 var
@@ -25,7 +25,7 @@ var
 procedure InitializeWizard();
 begin
   DownloadPathPage := CreateInputDirPage(wpSelectDir, 'Carpeta de Descarga', 
-    'Seleccione la carpeta de descargas de las facturas:', 
+    'Seleccione la carpeta donde desea descargas de las facturas:', 
     'Por favor seleccione la carpeta donde se guardarán las facturas descargadas:', False, 'Facturas');
   DownloadPathPage.Add('');
 

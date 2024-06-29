@@ -10,6 +10,9 @@ History.db
 ### Tests ###
 test.py
 
+### Output ####
+Output/
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -22,6 +22,7 @@ Base = declarative_base()
 
 # Definir el modelo para TiposDeDocumentos
 class TiposDeDocumentos(Base):
+    # pylint: disable=too-few-public-methods
     """
     Clase para representar el modelo de TiposDeDocumentos.
     """
@@ -32,6 +33,7 @@ class TiposDeDocumentos(Base):
 
 # Definir el modelo para CondicionFrenteIva
 class CondicionFrenteIva(Base):
+    # pylint: disable=too-few-public-methods
     """
     Clase para representar el modelo de CondicionFrenteIva.
     """
@@ -42,6 +44,7 @@ class CondicionFrenteIva(Base):
 
 # Definir el modelo para Facturas
 class Facturas(Base):
+    # pylint: disable=too-few-public-methods
     """
     Clase para representar el modelo de Facturas.
     """

@@ -33,8 +33,6 @@ if not os.path.exists(download_path):
     os.makedirs(download_path)
 
 APP = None
-PROGRESS_WINDOW = None
-PROGRESS_BAR = None
 ICON_PATH = './static/afip.ico'
 CONDITION_OPTIONS = ['Consumidor Final', 'Iva Responsable Inscripto', 'Iva Sujeto Excento' ]
 
@@ -136,11 +134,11 @@ def download_day(driver):
     Args:
         driver (WebDriver): La instancia del controlador de Chrome.
     """
-    progress('Descarga del Dia')
+    progress = ProgressWindow(APP, 'Descarga del Dia')
     try:
         login(driver)
 
-        set_progress(20)
+        progress.set_progress(20)
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "btn_consultas"))
@@ -149,7 +147,7 @@ def download_day(driver):
         dropdown = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "idTipoComprobante"))
         )
-        set_progress(40)
+        progress.set_progress(40)
 
         select = Select(dropdown)
         select.select_by_index(9)
@@ -160,7 +158,7 @@ def download_day(driver):
             )
         ).click()
 
-        set_progress(55)
+        progress.set_progress(55)
 
         try:
             ver_buttons = WebDriverWait(driver, 10).until(
@@ -169,14 +167,14 @@ def download_day(driver):
                 )
             )
         except RuntimeError as e:
-            stop_progress()
+            progress.stop_progress()
             showinfo(
                 title='Descargar Facturas',
                 message='Hoy no hay facturas para descargar.',
             )
             print(f'Error: {e}')
 
-        set_progress(70)
+        progress.set_progress(70)
 
 
         for button in ver_buttons:
@@ -190,13 +188,13 @@ def download_day(driver):
 
         delete_files_with_parentheses(download_path)
 
-        set_progress(100)
-        stop_progress()
+        progress.set_progress(100)
+        progress.stop_progress()
 
     except RuntimeError as e:
         print(f"Ocurrió un error: {e}")
     finally:
-        stop_progress()
+        progress.stop_progress()
 
 
 def download_in_thread():
@@ -242,61 +240,73 @@ def in_thread(client_option, client_id, option, products):
     thread = threading.Thread(
         target=realizar_operacion,
         args=(driver, client_option, client_id, option, products,)
-        )
-    threadprogress = threading.Thread(target=progress, args=('Facturacion',))
-
+    )
     thread.start()
-    threadprogress.start()
 
-
-def progress(text):
+class ProgressWindow:
     """
-    Muestra una ventana de progreso con una barra de progreso.
+    Clase que representa una ventana de progreso con una barra de progreso.
 
-    Args:
-        text (str): El texto que se mostrará en la ventana de progreso.
+    Attributes:
+        root (tk.Tk): La ventana principal de la aplicación.
+        icon_path (str): La ruta del icono de la ventana de progreso.
+        progress_window (tk.Toplevel): La ventana de progreso.
+        progress_bar (ttk.Progressbar): La barra de progreso.
     """
-    global PROGRESS_WINDOW, PROGRESS_BAR
+    def __init__(self, r, text):
+        """
+        Inicializa una instancia de ProgressWindow.
 
-    PROGRESS_WINDOW = ttk.Toplevel(APP)
-    PROGRESS_WINDOW.geometry("280x60")
-    PROGRESS_WINDOW.title("Progreso de Factura")
-    PROGRESS_WINDOW.iconbitmap(ICON_PATH)
+        Args:
+            root (tk.Tk): La ventana principal de la aplicación.
+            text (str): El texto que se mostrará en la ventana de progreso.
+        """
+        self.root = r
+        self.icon_path = ICON_PATH
+        self.create_progress_window(text)
 
-    progress_label = ttk.Label(
-        PROGRESS_WINDOW,
-        text=text,
-        font=('TkDefaultFont', 11)
-    )
-    progress_label.place(x=20, y=0)
+    def create_progress_window(self, text):
+        """
+        Crea y configura la ventana de progreso y la barra de progreso.
 
-    PROGRESS_BAR = ttk.Progressbar(
-        PROGRESS_WINDOW, orient=ttk.HORIZONTAL, mode='determinate',
-        value=0, maximum=100, length=230, bootstyle="success"
-    )
-    PROGRESS_BAR.place(x=20, y=25, height=25)
+        Args:
+            text (str): El texto que se mostrará en la ventana de progreso.
+        """
+        self.progress_window = ttk.Toplevel(self.root)
+        self.progress_window.geometry("280x60")
+        self.progress_window.title("Progreso de Factura")
+        self.progress_window.iconbitmap(self.icon_path)
 
-def set_progress(p):
-    """
-    Actualiza el valor de la barra de progreso.
+        progress_label = ttk.Label(
+            self.progress_window,
+            text=text,
+            font=('TkDefaultFont', 11)
+        )
+        progress_label.place(x=20, y=0)
 
-    Args:
-        progress (int): El valor de progreso que se establecerá en la barra.
-    """
-    global PROGRESS_BAR
-    PROGRESS_BAR['value'] = p
-    PROGRESS_WINDOW.lift()
-    PROGRESS_WINDOW.update_idletasks()
+        self.progress_bar = ttk.Progressbar(
+            self.progress_window, orient=ttk.HORIZONTAL, mode='determinate',
+            value=0, maximum=100, length=230
+        )
+        self.progress_bar.place(x=20, y=25, height=25)
 
+    def set_progress(self, p):
+        """
+        Actualiza el valor de la barra de progreso.
 
-def stop_progress():
-    """
-    Cierra la ventana de progreso.
-    """
-    global PROGRESS_WINDOW
-    if PROGRESS_WINDOW:
-        PROGRESS_WINDOW.destroy()
+        Args:
+            p (int): El valor de progreso que se establecerá en la barra.
+        """
+        self.progress_bar['value'] = p
+        self.progress_window.lift()
+        self.progress_window.update_idletasks()
 
+    def stop_progress(self):
+        """
+        Cierra la ventana de progreso.
+        """
+        if self.progress_window:
+            self.progress_window.destroy()
 
 def put_all_items(driver, products):
     """
@@ -358,6 +368,7 @@ def realizar_operacion(driver, client_option, client_id, option, products):
         option (int): La opción seleccionada.
         products (list): La lista de productos.
     """
+    progress = ProgressWindow(APP, 'Facturación')
     try:
         login(driver)
 
@@ -365,13 +376,13 @@ def realizar_operacion(driver, client_option, client_id, option, products):
             EC.presence_of_element_located((By.ID, "btn_gen_cmp"))
         ).click()
 
-        set_progress(5)
+        progress.set_progress(5)
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "novolveramostrar"))
         ).click()
 
-        set_progress(10)
+        progress.set_progress(10)
 
         select = Select(
             WebDriverWait(driver, 10).until(
@@ -388,14 +399,14 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
         siguiente(driver)
 
-        set_progress(18)
+        progress.set_progress(18)
 
         select = Select(WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idconcepto"))
         ))
         select.select_by_index(1)
 
-        set_progress(25)
+        progress.set_progress(25)
 
         siguiente(driver)
 
@@ -404,7 +415,7 @@ def realizar_operacion(driver, client_option, client_id, option, products):
         )
         select = Select(condicion)
 
-        set_progress(30)
+        progress.set_progress(30)
 
         select.select_by_index(option)
 
@@ -413,12 +424,12 @@ def realizar_operacion(driver, client_option, client_id, option, products):
         ))
         selecttype.select_by_index(client_option)
 
-        set_progress(45)
+        progress.set_progress(45)
 
         clientid = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "nrodocreceptor"))
         )
-        set_progress(52)
+        progress.set_progress(52)
 
         clientid.send_keys(client_id)
 
@@ -426,17 +437,17 @@ def realizar_operacion(driver, client_option, client_id, option, products):
             EC.presence_of_element_located((By.ID, "formadepago1"))
         ).click()
 
-        set_progress(60)
+        progress.set_progress(60)
 
         siguiente(driver)
 
         put_all_items(driver, products)
 
-        set_progress(75)
+        progress.set_progress(75)
 
         siguiente(driver)
 
-        set_progress(80)
+        progress.set_progress(80)
         try:
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable(
@@ -444,16 +455,15 @@ def realizar_operacion(driver, client_option, client_id, option, products):
                         By.XPATH,
                         '//input[@type="button" and @value="Confirmar Datos..."]'
                     )
-                    )
+                )
             ).click()
 
-            set_progress(85)
+            progress.set_progress(85)
 
             WebDriverWait(driver, 10).until(EC.alert_is_present())
-            alert = driver.switch_to.alert
-            alert.accept()
+            driver.switch_to.alert.accept()
 
-            set_progress(90)
+            progress.set_progress(90)
 
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable(
@@ -462,9 +472,9 @@ def realizar_operacion(driver, client_option, client_id, option, products):
                 )
             ).click()
 
-            set_progress(95)
+            progress.set_progress(95)
             time.sleep(6)
-            set_progress(100)
+            progress.set_progress(100)
 
         except RuntimeError as e:
             print(f"Ocurrió un error: {e}")
@@ -474,7 +484,7 @@ def realizar_operacion(driver, client_option, client_id, option, products):
     finally:
         # Cerrar Chrome y parar el progreso
         driver.quit()
-        stop_progress()
+        progress.stop_progress()
 
 
 class App:

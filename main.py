@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """
 Main file for the App in tkinter. Process with selenium and ttkbootstrap for app style 
 """
@@ -16,14 +17,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from database import Facturas, engine
+from database import (
+    CondicionFrenteIva,
+    Facturas,
+    TiposDeDocumentos,
+    engine,
+    inicializar_si_necesario,
+    session,
+)
+
+inicializar_si_necesario()
 
 load_dotenv()
 
 Session = sessionmaker(bind=engine)
 session = Session()
+
+session.expire_all()
 
 fecha_actual = datetime.now()
 nombre_carpeta = fecha_actual.strftime('%d de %B %Y')
@@ -39,7 +52,6 @@ if not os.path.exists(download_path):
 APP = None
 ICON_PATH = './static/afip.ico'
 CONDITION_OPTIONS = ['Consumidor Final', 'Iva Responsable Inscripto', 'Iva Sujeto Excento' ]
-
 
 def start_chrome():
     """
@@ -57,7 +69,7 @@ def start_chrome():
         "safebrowsing.enabled": True
     }
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_experimental_option("prefs", prefs)
     driver = webdriver.Chrome(service=service, options=options)
@@ -153,8 +165,8 @@ def download_day(driver):
         )
         progress.set_progress(40)
 
-        select = Select(dropdown)
-        select.select_by_index(9)
+        drselect = Select(dropdown)
+        drselect.select_by_index(9)
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
@@ -339,12 +351,12 @@ def put_all_items(driver, products):
         )
         quantity.clear()
         quantity.send_keys(product['Quantity'])
-        select = Select(WebDriverWait(driver, 10).until(
+        detalleselect = Select(WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
                 (By.ID, f"detalle_medida{index}")
             )
         ))
-        select.select_by_index(7)
+        detalleselect.select_by_index(7)
 
         preciou = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
@@ -361,6 +373,108 @@ def put_all_items(driver, products):
                     )
                 )
             ).click()
+
+
+class History:
+    """
+    Clase que muestra el historial de facturas
+
+    Attributes:
+        root (tk.Tk): La ventana principal de la aplicación.
+        icon_path (str): La ruta del icono de la ventana de progreso.
+        progress_window (tk.Toplevel): La ventana de progreso.
+        progress_bar (ttk.Progressbar): La barra de progreso.
+    """
+    def __init__(self, r):
+        """
+        Inicializa una instancia de History.
+
+        Args:
+            root (tk.Tk): La ventana principal de la aplicación.
+            text (str): El texto que se mostrará en la ventana de progreso.
+        """
+        self.root = r
+        self.icon_path = ICON_PATH
+        self.create_history_window()
+        center_window(self.root)
+
+    def create_history_window(self):
+        """
+        Crea y configura la ventana de progreso y la barra de progreso.
+
+        Args:
+            text (str): El texto que se mostrará en la ventana de progreso.
+        """
+        self.h = ttk.Toplevel(self.root)
+        self.h.geometry("510x400")
+        self.h.title("Historial")
+        self.h.iconbitmap(self.icon_path)
+
+        self.history_tree = ttk.Treeview(
+            self.h,
+            bootstyle="dark",
+            columns=(
+                "id",
+                "document_type",
+                "iva_condition",
+                "total_value",
+                "time_billing"
+            ),
+            show='headings'
+        )
+        self.history_tree.heading("id", text="Numero de Doc.")
+        self.history_tree.heading("document_type", text="Tipo")
+        self.history_tree.heading("iva_condition", text="Condición Iva")
+        self.history_tree.heading("total_value", text="Valor Total")
+        self.history_tree.heading("time_billing", text="Fecha de Facturación")
+
+        self.history_tree.column("id", anchor=ttk.CENTER, width=90)
+        self.history_tree.column("document_type",anchor=ttk.CENTER,  width=50)
+        self.history_tree.column("iva_condition", anchor=ttk.CENTER, width=100)
+        self.history_tree.column("total_value", anchor=ttk.CENTER, width=100)
+        self.history_tree.column("time_billing", anchor=ttk.CENTER, width=100)
+        self.history_tree.place(x=5, y=5, width=500,height=350)
+
+        self.exit_button = ttk.Button(
+            self.h,
+            bootstyle="danger-outline",
+            text="Cerrar historial",
+            command=self.close_history_window
+        )
+        self.exit_button.place(x=360, y=365, width=140, height=28)
+
+        self.load_data()
+
+    def load_data(self, attempts=0, max_attempts=1):
+        # Check if maximum attempts have been reached
+        if attempts >= max_attempts:
+            return
+
+        # Crear una nueva sesión
+        sess = sessionmaker(bind=engine)
+        load_session = sess()
+
+        # Realizar la consulta
+        stmt = select(Facturas).join(TiposDeDocumentos).join(CondicionFrenteIva)
+        bills = load_session.scalars(stmt).all()
+
+        # Insertar los datos en el Treeview
+        for bill in bills:
+            formated_date = bill.fecha.strftime('%d-%m-%Y')
+            self.history_tree.insert('', ttk.END, values=(
+                bill.id_cliente,
+                bill.tipo_de_documento.nombre_de_tipo,
+                bill.condicion_iva_rel.nombre_de_condicion,
+                f'{bill.valor_total}$',
+                formated_date
+            ))
+        self.load_data(attempts + 1, max_attempts)
+
+    def close_history_window(self):
+        """
+        Close the history window
+        """
+        self.h.destroy()
 
 
 def realizar_operacion(driver, client_option, client_id, option, products):
@@ -391,7 +505,7 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
         progress.set_progress(10)
 
-        select = Select(
+        s = Select(
             WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
                 (
@@ -402,16 +516,16 @@ def realizar_operacion(driver, client_option, client_id, option, products):
             )
         )
 
-        select.select_by_index(1)
+        s.select_by_index(1)
 
         siguiente(driver)
 
         progress.set_progress(18)
 
-        select = Select(WebDriverWait(driver, 10).until(
+        selectid = Select(WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idconcepto"))
         ))
-        select.select_by_index(1)
+        selectid.select_by_index(1)
 
         progress.set_progress(25)
 
@@ -420,11 +534,11 @@ def realizar_operacion(driver, client_option, client_id, option, products):
         condicion = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idivareceptor"))
         )
-        select = Select(condicion)
+
+        selectcondition = Select(condicion)
+        selectcondition.select_by_index(option)
 
         progress.set_progress(30)
-
-        select.select_by_index(option)
 
         selecttype = Select(WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "idtipodocreceptor"))
@@ -470,16 +584,16 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
             # Acceptar la factura
             WebDriverWait(driver, 10).until(EC.alert_is_present())
-            # driver.switch_to.alert.accept()
+            driver.switch_to.alert.accept()
 
-            # progress.set_progress(90)
+            progress.set_progress(90)
 
-            # WebDriverWait(driver, 10).until(
-            #     EC.element_to_be_clickable(
-            #         (By.XPATH,
-            #          '//input[@type="button" and @value="Imprimir..."]')
-            #     )
-            # ).click()
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH,
+                     '//input[@type="button" and @value="Imprimir..."]')
+                )
+            ).click()
 
             progress.set_progress(95)
 
@@ -632,7 +746,7 @@ class App:
         self.remove_all_button.place(x=180, y=383, width=140, height=28)
 
         self.text_total = ttk.Label(r, bootstyle="dark", text='Total: 0$')
-        self.text_total.place(x=395, y=265)
+        self.text_total.place(x=395, y=272)
 
         # Botón para ejecutar las funciones de Selenium
         self.send_button = ttk.Button(
@@ -650,6 +764,14 @@ class App:
             command=self.download
         )
         self.download_button.place(x=485, y=310, width=120)
+
+        self.history_button = ttk.Button(
+            r,
+            bootstyle="secondary-outline",
+            text="Ver Historial",
+            command=self.history
+        )
+        self.history_button.place(x=485, y=350, width=120)
 
         self.error_label = ttk.Label(r, text='', bootstyle="danger")
         self.error_label.place(x=330, y=390)
@@ -923,6 +1045,11 @@ class App:
         Descarga las facturas en un hilo separado.
         """
         download_in_thread()
+
+    def history(self):
+        """_summary_
+        """
+        History(self.root)
 
     def send(self):
         """

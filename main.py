@@ -446,6 +446,12 @@ class History:
         self.load_data()
 
     def load_data(self, attempts=0, max_attempts=1):
+        """Funcion para cargar datos al treeview
+
+        Args:
+            attempts (int, optional): Cantidad de intentos
+            max_attempts (int, optional): Cantidad maxima de intentos
+        """
         # Check if maximum attempts have been reached
         if attempts >= max_attempts:
             return

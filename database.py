@@ -22,6 +22,10 @@ engine = create_engine('sqlite:///History.db', pool_size=20, max_overflow=10)
 Base = declarative_base()
 
 class Meta(Base):
+    # pylint: disable=too-few-public-methods
+    """
+    Clase para saber si se ha inicializado o no
+    """
     __tablename__ = 'meta'
     id = Column(Integer, primary_key=True)
     inicializado = Column(Boolean, default=False)

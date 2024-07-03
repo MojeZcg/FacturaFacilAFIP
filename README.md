@@ -8,8 +8,8 @@ FacturaFacilAFIP es una aplicación para emitir facturas electrónicas a través
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/Screenshot_1.png" alt="Main App Screenshot" width="500">
-  <img src="screenshots/Screenshot_2.png" alt="History window Screenshot" width="400">
+  <img src="screenshots/Screenshot_1.png" alt="Main App Screenshot" width="350">
+  <img src="screenshots/Screenshot_2.png" alt="History window Screenshot" width="250">
 </p>
 
 ## Como ejecutar localmente

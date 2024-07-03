@@ -452,7 +452,6 @@ class History:
             attempts (int, optional): Cantidad de intentos
             max_attempts (int, optional): Cantidad maxima de intentos
         """
-        # Check if maximum attempts have been reached
         if attempts >= max_attempts:
             return
 
@@ -478,7 +477,7 @@ class History:
 
     def close_history_window(self):
         """
-        Close the history window
+        Cerrar el historial
         """
         self.h.destroy()
 

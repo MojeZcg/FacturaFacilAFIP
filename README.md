@@ -4,6 +4,14 @@
 FacturaFacilAFIP es una aplicación para emitir facturas electrónicas a través de los servicios web de la AFIP (Administración Federal de Ingresos Públicos).
 
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
+
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/Screenshot_1.png" alt="Main App Screenshot" width="500">
+  <img src="screenshots/Screenshot_2.png" alt="History window Screenshot" width="400">
+</p>
+
 ## Como ejecutar localmente
 
 Clone the project
@@ -105,4 +113,4 @@ git push origin nueva-funcionalidad
 
 
 ## Licencia
-#### Este proyecto está bajo la Licencia [GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text). Para más detalles, ver el archivo [LICENSE]('LICENSE').
+#### Este proyecto está bajo la Licencia [GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text). Para más detalles, ver el archivo [LICENSE](LICENSE).

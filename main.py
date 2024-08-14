@@ -7,7 +7,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showerror, showinfo
 
 import ttkbootstrap as ttk
 from dotenv import load_dotenv
@@ -17,23 +17,37 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import joinedload, sessionmaker
 
-from database import (
-    CondicionFrenteIva,
-    Facturas,
-    TiposDeDocumentos,
-    engine,
-    inicializar_si_necesario,
-    session,
-)
+from database import Facturas, inicializar_si_necesario, session
 
 inicializar_si_necesario()
 
 load_dotenv()
 
-Session = sessionmaker(bind=engine)
+def refresh_env():
+    """
+    Recarga las variables de entorno desde el archivo .env.
+    """
+    load_dotenv()
+
+def getenv(nombre_variable):
+    """
+    Obtiene el valor de una variable de entorno. Asegúrate de que las variables
+    se hayan recargado antes de usar esta función.
+
+    Args:
+        nombre_variable (str): Nombre de la variable de entorno.
+
+    Returns:
+        str: Valor de la variable de entorno.
+    """
+    return os.getenv(nombre_variable)
+
+engine = create_engine('sqlite:///History.db', pool_size=20, max_overflow=10)
+
+Session = sessionmaker(bind=engine, future=True)
 session = Session()
 
 session.expire_all()
@@ -41,7 +55,7 @@ session.expire_all()
 fecha_actual = datetime.now()
 nombre_carpeta = fecha_actual.strftime('%d de %B %Y')
 
-default_path = Path(os.getenv('DOWNLOAD_PATH'))
+default_path = Path(getenv('DOWNLOAD_PATH'))
 
 download_path = os.path.join(default_path, nombre_carpeta)
 
@@ -60,7 +74,7 @@ def start_chrome():
     Returns:
         WebDriver: Una instancia del controlador de Chrome.
     """
-    driver_path = os.getenv('DRIVER_PATH')
+    driver_path = getenv('DRIVER_PATH')
     service = Service(driver_path)
     prefs = {
         "download.default_directory": download_path,
@@ -98,31 +112,57 @@ def login(driver):
     Args:
         driver (WebDriver): La instancia del controlador de Chrome.
     """
-    driver.get("https://auth.afip.gob.ar/contribuyente_/login.xhtml")
-    username = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "F1:username"))
-    )
-    # Ingresar el Cuil Correspondiente
-    username.clear()
-    username.send_keys(os.getenv('AFIP_CUIL'))
-    username.send_keys(Keys.RETURN)
-    # Selecciona el campo Clave
-    password = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "F1:password"))
-    )
-    # Ingresar la Clave Correspondiente
-    password.clear()
-    password.send_keys(os.getenv('AFIP_KEY'))
-    password.send_keys(Keys.RETURN)
-    # Ingresa a responsable inscripto
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "a.full-width"))
-    ).click()
-    time.sleep(1)
-    driver.switch_to.window(driver.window_handles[-1])
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input.btn_empresa"))
-    ).click()
+    refresh_env()
+
+    try:
+        driver.get("https://auth.afip.gob.ar/contribuyente_/login.xhtml")
+
+        username = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "F1:username"))
+        )
+
+        # Ingresar el Cuil Correspondiente
+        username.clear()
+        username.send_keys(getenv('AFIP_CUIL'))
+        username.send_keys(Keys.RETURN)
+
+        # Selecciona el campo Clave
+        password = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "F1:password"))
+        )
+
+        # Ingresar la Clave Correspondiente
+        password.clear()
+        password.send_keys(getenv('AFIP_KEY') )
+        password.send_keys(Keys.RETURN)
+
+        # Ingresa a responsable inscripto
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "a.full-width"))
+        ).click()
+
+        time.sleep(1)
+
+        driver.switch_to.window(driver.window_handles[-1])
+
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable(
+                (
+                    By.XPATH,
+                    '//input[@type="button" and @value="FEDERICHE MARCELA LAURA"]'
+                )
+            )
+        ).click()
+
+    except RuntimeError as e:
+        ttk.Button(
+            APP,
+            text='Show an error message',
+            command=lambda: showerror(
+                title='Error',
+                message='Fallo al iniciar sesión.')
+        )
+        print(f'error: {e}')
 
 
 def delete_files_with_parentheses(directory):
@@ -208,7 +248,10 @@ def download_day(driver):
         progress.stop_progress()
 
     except RuntimeError as e:
-        print(f"Ocurrió un error: {e}")
+        showerror(
+            title='Descarga del dia',
+            message=f'Ocurrio un error: {e}'
+        )
     finally:
         progress.stop_progress()
 
@@ -406,7 +449,7 @@ class History:
             text (str): El texto que se mostrará en la ventana de progreso.
         """
         self.h = ttk.Toplevel(self.root)
-        self.h.geometry("510x400")
+        self.h.geometry("600x400")
         self.h.title("Historial")
         self.h.iconbitmap(self.icon_path)
 
@@ -433,7 +476,7 @@ class History:
         self.history_tree.column("iva_condition", anchor=ttk.CENTER, width=100)
         self.history_tree.column("total_value", anchor=ttk.CENTER, width=100)
         self.history_tree.column("time_billing", anchor=ttk.CENTER, width=100)
-        self.history_tree.place(x=5, y=5, width=500,height=350)
+        self.history_tree.place(x=5, y=5, width=590,height=350)
 
         self.exit_button = ttk.Button(
             self.h,
@@ -441,45 +484,78 @@ class History:
             text="Cerrar historial",
             command=self.close_history_window
         )
-        self.exit_button.place(x=360, y=365, width=140, height=28)
+        self.exit_button.place(x=455, y=365, width=140, height=28)
 
         self.load_data()
 
-    def load_data(self, attempts=0, max_attempts=1):
-        """Funcion para cargar datos al treeview
+    def load_data(self):
+        """Función para cargar datos al Treeview"""
+        with Session() as sess:
+            # Realizar la consulta usando joinedload para evitar NoneType
+            stmt = select(Facturas).options(
+                joinedload(Facturas.tipo_de_documento),
+                joinedload(Facturas.condicion_iva_rel)
+            )
+            result = sess.execute(stmt)
+            bills = result.scalars().all()
 
-        Args:
-            attempts (int, optional): Cantidad de intentos
-            max_attempts (int, optional): Cantidad maxima de intentos
-        """
-        if attempts >= max_attempts:
-            return
+            # Insertar los datos en el Treeview
+            for bill in bills:
+                formated_date = bill.fecha.strftime('%d-%m-%Y') if bill.fecha else 'N/A'
+                print( f'Tipo: {bill.tipo_de_documento}')
+                tipo_de_documento_nombre = bill.tipo_de_documento.nombre_de_tipo if bill.tipo_de_documento else 'Desconocido' # pylint: disable=line-too-long
+                condicion_iva_nombre = bill.condicion_iva_rel.nombre_de_condicion if bill.condicion_iva_rel else 'Desconocido' # pylint: disable=line-too-long
 
-        # Crear una nueva sesión
-        sess = sessionmaker(bind=engine)
-        load_session = sess()
-
-        # Realizar la consulta
-        stmt = select(Facturas).join(TiposDeDocumentos).join(CondicionFrenteIva)
-        bills = load_session.scalars(stmt).all()
-
-        # Insertar los datos en el Treeview
-        for bill in bills:
-            formated_date = bill.fecha.strftime('%d-%m-%Y')
-            self.history_tree.insert('', ttk.END, values=(
-                bill.id_cliente,
-                bill.tipo_de_documento.nombre_de_tipo,
-                bill.condicion_iva_rel.nombre_de_condicion,
-                f'{bill.valor_total}$',
-                formated_date
-            ))
-        self.load_data(attempts + 1, max_attempts)
+                self.history_tree.insert('', ttk.END, values=(
+                    bill.id_cliente,
+                    tipo_de_documento_nombre,
+                    condicion_iva_nombre,
+                    f'{bill.valor_total}$' if bill.valor_total else '0$',
+                    formated_date
+                ))
+            self.history_tree.update()
 
     def close_history_window(self):
         """
         Cerrar el historial
         """
         self.h.destroy()
+
+
+def verificar_archivo_nuevo():
+    """
+    Verifica si hay un archivo nuevo en la carpeta comparado con el archivo_referencia.
+    Si no hay archivos nuevos, espera 4 segundos antes de volver a verificar.
+
+    :param carpeta: Ruta de la carpeta a verificar.
+    :param archivo_referencia: Nombre del archivo de
+    referencia para comparar si hay nuevos archivos.
+    """
+    archivos_anterior = set(os.listdir(download_path))
+
+    while True:
+        # Espera 4 segundos
+        time.sleep(4)
+
+        # Lista los archivos actuales en la carpeta
+        archivos_actual = set(os.listdir(download_path))
+
+        # Comprueba si hay archivos nuevos
+        if archivos_actual != archivos_anterior:
+            nuevo_archivo = archivos_actual - archivos_anterior
+            name = ', '.join(map(str, nuevo_archivo))
+
+            archivos_anterior = archivos_actual
+
+            if name.endswith('.pdf'):
+                time.sleep(2)
+                showinfo(
+                        title='Nueva Factura',
+                        message=f'Se generó una nueva factura: {name}'
+                )
+                break
+        else:
+            print(f'No se encontro ningun archivo: {archivos_actual}')
 
 
 def realizar_operacion(driver, client_option, client_id, option, products):
@@ -495,23 +571,24 @@ def realizar_operacion(driver, client_option, client_id, option, products):
         products (list): La lista de productos.
     """
     progress = ProgressWindow(APP, 'Facturación')
+
     try:
         login(driver)
 
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "btn_gen_cmp"))
         ).click()
 
         progress.set_progress(5)
 
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "novolveramostrar"))
         ).click()
 
         progress.set_progress(10)
 
         s = Select(
-            WebDriverWait(driver, 10).until(
+            WebDriverWait(driver, 20).until(
             EC.presence_of_element_located(
                 (
                     By.NAME,
@@ -527,7 +604,7 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
         progress.set_progress(18)
 
-        selectid = Select(WebDriverWait(driver, 10).until(
+        selectid = Select(WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "idconcepto"))
         ))
         selectid.select_by_index(1)
@@ -536,7 +613,7 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
         siguiente(driver)
 
-        condicion = WebDriverWait(driver, 10).until(
+        condicion = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "idivareceptor"))
         )
 
@@ -545,21 +622,21 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
         progress.set_progress(30)
 
-        selecttype = Select(WebDriverWait(driver, 10).until(
+        selecttype = Select(WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "idtipodocreceptor"))
         ))
         selecttype.select_by_index(client_option)
 
         progress.set_progress(45)
 
-        clientid = WebDriverWait(driver, 10).until(
+        clientid = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "nrodocreceptor"))
         )
         progress.set_progress(52)
 
         clientid.send_keys(client_id)
 
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.ID, "formadepago1"))
         ).click()
 
@@ -604,10 +681,12 @@ def realizar_operacion(driver, client_option, client_id, option, products):
 
             time.sleep(6)
 
-            progress.set_progress(100)
-
         except RuntimeError as e:
             print(f"Ocurrió un error: {e}")
+
+        verificar_archivo_nuevo()
+
+        progress.set_progress(100)
 
     except RuntimeError as e:
         print(f"Ocurrió un error: {e}")
@@ -1044,6 +1123,7 @@ class App:
         self.quantity.delete(0, "end")
         self.priceu.delete(0, "end")
         self.error_label.config(text="")
+        self.text_total.config(text="Total: 0$")
 
     def download(self):
         """
@@ -1075,7 +1155,7 @@ class App:
 
         factura = Facturas(
             id_cliente=client_id,
-            tipo_de_documento_id=client_option,
+            tipo_de_documento_id=client_option+1,
             condicion_iva=option,
             productos=products,
             valor_total=totalvalue,

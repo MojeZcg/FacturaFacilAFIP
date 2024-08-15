@@ -7,10 +7,10 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from tkinter.messagebox import showerror, showinfo
+from tkinter.messagebox import showerror, showinfo, showwarning
 
 import ttkbootstrap as ttk
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -66,6 +66,17 @@ if not os.path.exists(download_path):
 APP = None
 ICON_PATH = './static/afip.ico'
 CONDITION_OPTIONS = ['Consumidor Final', 'Iva Responsable Inscripto', 'Iva Sujeto Excento' ]
+
+
+def update_afip_key(new_value):
+    """
+    Actualiza la clave AFIP_KEY en el archivo .env.
+
+    Args:
+        new_value (str): El nuevo valor para AFIP_KEY.
+    """
+    set_key('.env', 'AFIP_KEY', new_value)
+
 
 def start_chrome():
     """
@@ -534,8 +545,8 @@ def verificar_archivo_nuevo():
     archivos_anterior = set(os.listdir(download_path))
 
     while True:
-        # Espera 4 segundos
-        time.sleep(4)
+        # Espera 5 segundos
+        time.sleep(5)
 
         # Lista los archivos actuales en la carpeta
         archivos_actual = set(os.listdir(download_path))
@@ -550,9 +561,10 @@ def verificar_archivo_nuevo():
             if name.endswith('.pdf'):
                 time.sleep(2)
                 showinfo(
-                        title='Nueva Factura',
-                        message=f'Se generó una nueva factura: {name}'
+                    title='Nueva Factura',
+                    message=f'Se generó una nueva factura: {name}'
                 )
+
                 break
         else:
             print(f'No se encontro ningun archivo: {archivos_actual}')
@@ -668,8 +680,9 @@ def realizar_operacion(driver, client_option, client_id, option, products):
             WebDriverWait(driver, 10).until(EC.alert_is_present())
             driver.switch_to.alert.accept()
 
-            progress.set_progress(90)
+            progress.set_progress(94)
 
+            # Descargar Factura
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable(
                     (By.XPATH,
@@ -677,20 +690,17 @@ def realizar_operacion(driver, client_option, client_id, option, products):
                 )
             ).click()
 
-            progress.set_progress(95)
+            verificar_archivo_nuevo()
 
-            time.sleep(6)
-
+            progress.set_progress(97)
         except RuntimeError as e:
             print(f"Ocurrió un error: {e}")
-
-        verificar_archivo_nuevo()
-
-        progress.set_progress(100)
-
     except RuntimeError as e:
         print(f"Ocurrió un error: {e}")
+
     finally:
+        progress.set_progress(100)
+
         # Cerrar Chrome y parar el progreso
         driver.quit()
         progress.stop_progress()
@@ -716,6 +726,20 @@ class App:
         self.root.resizable(False, False)
         self.root.iconbitmap(ICON_PATH)
         self.root.geometry("612x420")
+
+        menu_bar = ttk.Menu(self.root)
+        self.root.config(menu=menu_bar)
+
+        config_menu = ttk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Descargar", menu=config_menu)
+        config_menu.add_command(label="Descargar todo el Dia", command=self.download)
+
+        config_menu1 = ttk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Configuración", menu=config_menu1)
+        config_menu1.add_command(
+            label="Actualizar Contraseña",
+            command=self.show_update_window
+        )
 
         self.client_options = ('CUIT', 'CUIL', 'DNI')
         self.client_var = ttk.StringVar(value=self.client_options[0])
@@ -836,26 +860,18 @@ class App:
         self.send_button = ttk.Button(
             r,
             bootstyle="success-outline",
-            text="Enviar",
+            text="Facturar",
             command=self.send
         )
         self.send_button.place(x=485, y=270, width=120)
 
-        self.download_button = ttk.Button(
-            r,
-            bootstyle="secundary-outline",
-            text="Descargar facturas",
-            command=self.download
-        )
-        self.download_button.place(x=485, y=310, width=120)
-
         self.history_button = ttk.Button(
             r,
-            bootstyle="secondary-outline",
+            bootstyle="dark-outline",
             text="Ver Historial",
             command=self.history
         )
-        self.history_button.place(x=485, y=350, width=120)
+        self.history_button.place(x=485, y=310, width=120)
 
         self.error_label = ttk.Label(r, text='', bootstyle="danger")
         self.error_label.place(x=330, y=390)
@@ -863,6 +879,42 @@ class App:
         self.raw_client_id = ""
 
         center_window(self.root)
+
+    def show_update_window(self):
+        """
+        Muestra una ventana para actualizar la clave AFIP_KEY.
+        """
+        def submit():
+            """
+            Obtiene el nuevo valor de la entrada y actualiza la clave AFIP_KEY.
+            Muestra una advertencia si el campo está vacío y una notificación
+            si la actualización es exitosa.
+            """
+            new_value = entry.get()
+            if not new_value:
+                showwarning("Advertencia", "El campo no puede estar vacío")
+                return
+            update_afip_key(new_value)
+            showinfo("Éxito", "Cambiaste la contraseña de afip.")
+            update_window.destroy()
+
+        refresh_env()
+
+        update_window = ttk.Toplevel(self.root)
+        update_window.geometry("280x115")
+        update_window.resizable(False, False)
+        update_window.iconbitmap(ICON_PATH)
+        update_window.title("Actualizar AFIP_KEY")
+
+        ttk.Label(update_window, text="Contraseña actual: ").place(x=15, y=10)
+        current_key = getenv('AFIP_KEY')
+        ttk.Label(update_window, text=current_key, bootstyle="primary").place(x=130, y=10)
+
+        ttk.Label(update_window, text="Nueva Contraseña:").place(x=15, y=40)
+        entry = ttk.Entry(update_window, bootstyle="dark")
+        entry.place(x=130, y=35)
+
+        ttk.Button(update_window, text="Actualizar", command=submit).place(x=163, y=75, width=100)
 
     def obtener_valores_columna(self):
         """

@@ -1,20 +1,20 @@
 [Setup]
 AppName=Factura Facil
-AppVersion=1.0.2
-DefaultDirName={autopf}\Factura Facil
+AppVersion=2.1.0
+DefaultDirName={pf}\Factura Facil
 DefaultGroupName=Factura Facil
 OutputBaseFilename=FacturaFacilSetup
 SetupIconFile=static\afip.ico
 LicenseFile=LICENSE
 DisableProgramGroupPage=yes
+DisableDirPage=yes
 
 [Files]
 Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-[Icons]
-Name: "{commondesktop}\Factura Facil"; Filename: "{app}\FacturaFacilAFIP.exe"; IconFilename: "{app}\static\afip.ico"
+Source: "dist\CreateShortcut.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Run]
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\CreateShortcut.ps1"""; Flags: runhidden
 Filename: "{app}\FacturaFacilAFIP.exe"; Description: "{cm:LaunchProgram,Factura Facil}"; Flags: nowait postinstall skipifsilent
 
 [Code]

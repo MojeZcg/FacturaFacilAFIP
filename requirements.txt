@@ -3,3 +3,7 @@ python-dotenv
 ttkbootstrap
 SQLAlchemy
 webdriver-manager
+dotenv
+pyinstaller
+pandas
+openpyxl

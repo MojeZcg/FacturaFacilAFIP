@@ -2,7 +2,8 @@ from tkinter import ttk
 from tkinter import HORIZONTAL, Toplevel
 
 # Define the path to your icon file here
-ICON_PATH = "static/afip.ico"
+ICON_PATH = "static/arca.ico"
+
 
 class ProgressWindow:
     """
@@ -14,6 +15,7 @@ class ProgressWindow:
         progress_window (tk.Toplevel): La ventana de progreso.
         progress_bar (ttk.Progressbar): La barra de progreso.
     """
+
     def __init__(self, r, text):
         """
         Inicializa una instancia de ProgressWindow.
@@ -39,14 +41,16 @@ class ProgressWindow:
         self.progress_window.iconbitmap(self.icon_path)
 
         progress_label = ttk.Label(
-            self.progress_window,
-            text=text,
-            font=('TkDefaultFont', 11)
+            self.progress_window, text=text, font=("TkDefaultFont", 11)
         )
         progress_label.place(x=20, y=0)
         self.progress_bar = ttk.Progressbar(
-            self.progress_window, orient=HORIZONTAL, mode='determinate',
-            value=0, maximum=100, length=230
+            self.progress_window,
+            orient=HORIZONTAL,
+            mode="determinate",
+            value=0,
+            maximum=100,
+            length=230,
         )
         self.progress_bar.place(x=20, y=25, height=25)
 
@@ -57,7 +61,7 @@ class ProgressWindow:
         Args:
             p (int): El valor de progreso que se establecerá en la barra.
         """
-        self.progress_bar['value'] = p
+        self.progress_bar["value"] = p
         self.progress_window.lift()
         self.progress_window.update_idletasks()
 

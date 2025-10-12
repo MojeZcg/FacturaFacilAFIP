@@ -1,24 +1,31 @@
-
-import ttkbootstrap as ttk
 from tkinter.messagebox import showwarning, showinfo
+import ttkbootstrap as ttk
 from utils.env import update_afip_key, refresh_env, getenv
 
 from utils.helpers import center_window
 
 from gui.history import History
 from models.database import session
-from models.downloads import download_in_thread, in_thread
-from models.database import Facturas  # Asegúrate de que la ruta y el nombre sean correctos
+from models.downloads import download
+from models.database import (
+    Facturas,
+)
 
-ICON_PATH = './static/afip.ico'
+ICON_PATH = "./static/arca.ico"
 
-CONDITION_OPTIONS = ['Consumidor Final', 'Iva Responsable Inscripto', 'Iva Sujeto Excento' ]
+CONDITION_OPTIONS = [
+    "Consumidor Final",
+    "Iva Responsable Inscripto",
+    "Iva Sujeto Excento",
+]
+
 
 class App:
     # pylint: disable=too-many-instance-attributes
     """
     Crea la clase de la aplicación.
     """
+
     def __init__(self, r):
         # pylint: disable=too-many-statements
         """
@@ -40,30 +47,30 @@ class App:
 
         config_menu = ttk.Menu(menu_bar, tearoff=0)
         menu_bar.add_cascade(label="Descargar", menu=config_menu)
-        config_menu.add_command(label="Descargar todo el Dia", command=self.download)
+        config_menu.add_command(label="Descargar historial", command=download)
 
         config_menu1 = ttk.Menu(menu_bar, tearoff=0)
         menu_bar.add_cascade(label="Configuración", menu=config_menu1)
         config_menu1.add_command(
-            label="Actualizar Contraseña",
-            command=self.show_update_window
+            label="Actualizar Contraseña", command=self.show_update_window
         )
 
-        self.client_options = ('CUIT', 'CUIL', 'DNI')
+        self.client_options = ("CUIT", "CUIL", "DNI")
         self.client_var = ttk.StringVar(value=self.client_options[0])
 
         # Crear campos de entrada del id del cliente
         ttk.Label(r, text="Identificador del cliente:").place(x=10, y=10)
         self.client_type = ttk.OptionMenu(
-            r, self.client_var,
+            r,
+            self.client_var,
             self.client_options[0],
             *self.client_options,
-            bootstyle="dark"
+            bootstyle="dark",
         )
         self.client_type.place(x=10, y=32, width=75)
 
         self.client = ttk.StringVar()
-        self.client.trace_add('write', self.format_client_id)
+        self.client.trace_add("write", self.format_client_id)
 
         self.client_entry = ttk.Entry(r, textvariable=self.client)
         self.client_entry.place(x=90, y=32, width=120)
@@ -73,33 +80,30 @@ class App:
         self.options = (
             CONDITION_OPTIONS[0],
             CONDITION_OPTIONS[1],
-            CONDITION_OPTIONS[2]
+            CONDITION_OPTIONS[2],
         )
 
         ttk.Label(r, text="Condición frente al IVA:").place(x=220, y=10)
-        self.option = ttk.OptionMenu(r,
-                                     self.option_var,
-                                     self.options[0],
-                                     *self.options,
-                                     command=self.update_client_options,
-                                     bootstyle="dark"
-                                     )
+        self.option = ttk.OptionMenu(
+            r,
+            self.option_var,
+            self.options[0],
+            *self.options,
+            command=self.update_client_options,
+            bootstyle="dark",
+        )
         self.option.place(x=220, y=32, width=200, height=30)
         # Llamar a update_client_options al inicio
         # para inicializar correctamente
         self.update_client_options(self.options[0])
 
         # Crear tabla
-        self.tree = ttk.Treeview(r,
-                                 bootstyle="dark",
-                                 columns=(
-                                     "name",
-                                     "quantity",
-                                     "unique_price",
-                                     "total_price"
-                                     ),
-                                 show='headings'
-                                 )
+        self.tree = ttk.Treeview(
+            r,
+            bootstyle="dark",
+            columns=("name", "quantity", "unique_price", "total_price"),
+            show="headings",
+        )
         self.tree.heading("name", text="Nombre")
         self.tree.heading("quantity", text="Cantidad (Unidades)")
         self.tree.heading("unique_price", text="Precio por Unidad (ARS)")
@@ -113,18 +117,14 @@ class App:
 
         # Crear campo y opciones para el OptionMenu
         self.common_products = (
-            'Fotos Carnet',
-            'Revelado de Fotos',
-            'Servicio Laser',
-            'Estampados'
-            )
+            "Fotos Carnet",
+            "Revelado de Fotos",
+            "Servicio Laser",
+            "Estampados",
+        )
 
         ttk.Label(r, text="Nombre de producto:").place(x=10, y=265)
-        self.name = ttk.Combobox(
-            r,
-            bootstyle="secondary",
-            values=self.common_products
-        )
+        self.name = ttk.Combobox(r, bootstyle="secondary", values=self.common_products)
 
         self.name.place(x=10, y=285, height=25, width=150)
 
@@ -140,7 +140,7 @@ class App:
             r,
             bootstyle="default-outline",
             text="Agregar Producto",
-            command=self.add_row
+            command=self.add_row,
         )
 
         self.add_row_button.place(x=180, y=313, width=140, height=28)
@@ -149,39 +149,30 @@ class App:
             r,
             bootstyle="danger-outline",
             text="Eliminar Seleccionados",
-            command=self.delete_rows
+            command=self.delete_rows,
         )
         self.remove_row_button.place(x=180, y=348, width=140, height=28)
 
         self.remove_all_button = ttk.Button(
-            r,
-            bootstyle="dark",
-            text="Eliminar Todos",
-            command=self.delete_all_rows
-            )
+            r, bootstyle="dark", text="Eliminar Todos", command=self.delete_all_rows
+        )
         self.remove_all_button.place(x=180, y=383, width=140, height=28)
 
-        self.text_total = ttk.Label(r, bootstyle="dark", text='Total: 0$')
+        self.text_total = ttk.Label(r, bootstyle="dark", text="Total: 0$")
         self.text_total.place(x=395, y=272)
 
         # Botón para ejecutar las funciones de Selenium
         self.send_button = ttk.Button(
-            r,
-            bootstyle="success-outline",
-            text="Facturar",
-            command=self.send
+            r, bootstyle="success-outline", text="Facturar", command=self.send
         )
         self.send_button.place(x=485, y=270, width=120)
 
         self.history_button = ttk.Button(
-            r,
-            bootstyle="dark-outline",
-            text="Ver Historial",
-            command=self.history
+            r, bootstyle="dark-outline", text="Ver Historial", command=self.history
         )
         self.history_button.place(x=485, y=310, width=120)
 
-        self.error_label = ttk.Label(r, text='', bootstyle="danger")
+        self.error_label = ttk.Label(r, text="", bootstyle="danger")
         self.error_label.place(x=330, y=390)
 
         self.raw_client_id = ""
@@ -192,6 +183,7 @@ class App:
         """
         Muestra una ventana para actualizar la clave AFIP_KEY.
         """
+
         def submit():
             """
             Obtiene el nuevo valor de la entrada y actualiza la clave AFIP_KEY.
@@ -215,21 +207,25 @@ class App:
         update_window.title("Actualizar AFIP_KEY")
 
         ttk.Label(update_window, text="Contraseña actual: ").place(x=15, y=10)
-        current_key = getenv('AFIP_KEY')
-        ttk.Label(update_window, text=current_key, bootstyle="primary").place(x=130, y=10)
+        current_key = getenv("AFIP_KEY")
+        ttk.Label(update_window, text=current_key, bootstyle="primary").place(
+            x=130, y=10
+        )
 
         ttk.Label(update_window, text="Nueva Contraseña:").place(x=15, y=40)
         entry = ttk.Entry(update_window, bootstyle="dark")
         entry.place(x=130, y=35)
 
-        ttk.Button(update_window, text="Actualizar", command=submit).place(x=163, y=75, width=100)
+        ttk.Button(update_window, text="Actualizar", command=submit).place(
+            x=163, y=75, width=100
+        )
 
     def obtener_valores_columna(self):
         """
         Obtiene los valores de una columna específica del widget 'tree'.
 
         Recorre todos los elementos del widget 'tree' y extrae los valores de la
-        cuarta columna ('values')[3]. Luego, agrega estos valores a una lista y 
+        cuarta columna ('values')[3]. Luego, agrega estos valores a una lista y
         la devuelve.
 
         Returns:
@@ -237,7 +233,7 @@ class App:
         """
         valores = []
         for item_id in self.tree.get_children():
-            valor_columna = self.tree.item(item_id, 'values')[3]
+            valor_columna = self.tree.item(item_id, "values")[3]
             valores.append(valor_columna)
         return valores
 
@@ -245,8 +241,8 @@ class App:
         """
         Actualiza el texto de un label con la suma de los valores de una columna específica.
 
-        Obtiene los valores de la cuarta columna de cada elemento del widget 'tree' 
-        usando la función 'obtener_valores_columna', los suma y actualiza el texto del 
+        Obtiene los valores de la cuarta columna de cada elemento del widget 'tree'
+        usando la función 'obtener_valores_columna', los suma y actualiza el texto del
         widget 'text_total' para mostrar el total en dólares.
         """
         valores = self.obtener_valores_columna()
@@ -260,20 +256,20 @@ class App:
         Formatea el ID del cliente en el formato 'XX-XXXXXXXX-X' para CUIT o CUIL.
 
         Dependiendo del tipo de cliente seleccionado (CUIT o CUIL), limpia y formatea
-        el valor del ID del cliente ingresado en el campo de entrada. Mantiene la 
+        el valor del ID del cliente ingresado en el campo de entrada. Mantiene la
         posición actual del cursor adecuada al nuevo formato.
 
         Args:
-            *args: Argumentos adicionales que pueden ser pasados a la función, pero no 
+            *args: Argumentos adicionales que pueden ser pasados a la función, pero no
                 se utilizan directamente.
         """
         client_var = self.client_var.get()
         cursor = self.client_entry.index(ttk.INSERT)
-        if client_var in ('CUIT', 'CUIL'):
+        if client_var in ("CUIT", "CUIL"):
             # Guardar la posición actual del cursor
 
             new_value = self.client.get()
-            clean = ''.join(filter(str.isdigit, new_value))
+            clean = "".join(filter(str.isdigit, new_value))
 
             # Formatear el valor limpio
             formatted_value = f"{clean[0:2]}-{clean[2:10]}-{clean[10:11]}"
@@ -289,12 +285,12 @@ class App:
             elif clean_cursor_position <= 10:
                 new_cursor = clean_cursor_position + 1  # Compensar el primer guion
             else:
-                new_cursor = clean_cursor_position + 2 # Compensar ambos guiones
+                new_cursor = clean_cursor_position + 2  # Compensar ambos guiones
 
             # Establecer la nueva posición del cursor
             self.client_entry.icursor(new_cursor)
             if not args:
-                print('noargs')
+                print("noargs")
 
     def update_client_options(self, selected_option):
         """
@@ -305,16 +301,18 @@ class App:
             selected_option (str): La condición frente al IVA seleccionada.
         """
         if selected_option in {CONDITION_OPTIONS[1], CONDITION_OPTIONS[2]}:
-            new_client_options = ('CUIT',)
+            new_client_options = ("CUIT",)
         else:  # Consumidor Final
-            new_client_options = ('CUIT', 'CUIL', 'DNI')
+            new_client_options = ("CUIT", "CUIL", "DNI")
 
         # Actualizar las opciones del primer OptionMenu
         menu = self.client_type["menu"]
-        menu.delete(0, "end") # pylint: disable=no-member
+        menu.delete(0, "end")  # pylint: disable=no-member
 
         for option in new_client_options:
-            menu.add_command(label=option, command=lambda value=option: self.client_var.set(value)) # pylint: disable=no-member
+            menu.add_command(  # pylint: disable=no-member
+                label=option, command=lambda value=option: self.client_var.set(value)
+            )
 
         # Establecer la opción predeterminada
         self.client_var.set(new_client_options[0])
@@ -323,10 +321,12 @@ class App:
         """
         Agrega un producto a la tabla de productos.
         """
-        if self.name.get() == '' or self.quantity.get() == '' or self.priceu.get() == '':
-            self.error_label.config(
-                text="Error: Falta informacion en el producto"
-            )
+        if (
+            self.name.get() == ""
+            or self.quantity.get() == ""
+            or self.priceu.get() == ""
+        ):
+            self.error_label.config(text="Error: Falta informacion en el producto")
         else:
             try:
                 q = float(self.quantity.get())
@@ -339,8 +339,9 @@ class App:
                         self.name.get(),
                         self.quantity.get(),
                         self.priceu.get(),
-                        total_price)
-                    )
+                        total_price,
+                    ),
+                )
 
                 self.name.delete(0, "end")
                 self.quantity.delete(0, "end")
@@ -349,7 +350,7 @@ class App:
                 self.actualizar_label()
             except ValueError:
                 self.error_label.config(
-                    text='La Cantidad o el Precio Unitario no es un numero'
+                    text="La Cantidad o el Precio Unitario no es un numero"
                 )
 
     def delete_rows(self):
@@ -375,13 +376,13 @@ class App:
         """
         client_var = self.client_var.get()
 
-        if client_var == 'CUIT':
+        if client_var == "CUIT":
             return 0
 
-        if client_var == 'CUIL':
+        if client_var == "CUIL":
             return 1
 
-        if client_var == 'DNI':
+        if client_var == "DNI":
             return 6
 
         return -1
@@ -416,24 +417,23 @@ class App:
         if self.tree.get_children() != ():
             products = []
             for item in self.tree.get_children():
-                item_data = self.tree.item(item, 'values')
+                item_data = self.tree.item(item, "values")
 
                 filtered_products = [
                     [
-                        value for index, value in enumerate(item_data)
-                        if self.tree['columns'][index]
-                        not in 'total_price']
+                        value
+                        for index, value in enumerate(item_data)
+                        if self.tree["columns"][index] not in "total_price"
                     ]
+                ]
 
                 for item in filtered_products:
-                    products.append({
-                        'Product': item[0],
-                        'Quantity': item[1],
-                        'Price': item[2]
-                    })
+                    products.append(
+                        {"Product": item[0], "Quantity": item[1], "Price": item[2]}
+                    )
             return products
 
-        self.error_label.config(text='Error: No hay productos')
+        self.error_label.config(text="Error: No hay productos")
         return None
 
     def validate_client_id(self) -> int | str:
@@ -444,19 +444,15 @@ class App:
             str: El identificador del cliente si es válido.
             int: -1 si el identificador del cliente no es válido.
         """
-        format_error = 'El id del cliente (CUIT, CUIL o DNI) no es valido.'
+        format_error = "El id del cliente (CUIT, CUIL o DNI) no es valido."
 
         client_id = self.raw_client_id
         client_type_var = self.client_var.get()
 
-        if client_id == '':
+        if client_id == "":
             return client_id
 
-        valid_lengths = {
-            'CUIT': [10, 11],
-            'CUIL': [10, 11],
-            'DNI': [7, 8]
-        }
+        valid_lengths = {"CUIT": [10, 11], "CUIL": [10, 11], "DNI": [7, 8]}
 
         if client_type_var not in valid_lengths:
             return -1
@@ -477,7 +473,7 @@ class App:
         Limpia todos los campos de entrada y la tabla de productos.
         """
         self.delete_all_rows()
-        self.raw_client_id = ''
+        self.raw_client_id = ""
         self.client_entry.delete(0, "end")
         self.name.delete(0, "end")
         self.quantity.delete(0, "end")
@@ -485,15 +481,8 @@ class App:
         self.error_label.config(text="")
         self.text_total.config(text="Total: 0$")
 
-    def download(self):
-        """
-        Descarga las facturas en un hilo separado.
-        """
-        download_in_thread()
-
     def history(self):
-        """_summary_
-        """
+        """_summary_"""
         History(self.root)
 
     def send(self):
@@ -509,13 +498,13 @@ class App:
 
         if products:
             for product in products:
-                price = float(product['Price'])
-                quantity = float(product['Quantity'])
-                totalvalue += (price * quantity)
+                price = float(product["Price"])
+                quantity = float(product["Quantity"])
+                totalvalue += price * quantity
 
         factura = Facturas(
             id_cliente=client_id,
-            tipo_de_documento_id=client_option+1,
+            tipo_de_documento_id=client_option + 1,
             condicion_iva=option,
             productos=products,
             valor_total=totalvalue,
@@ -525,11 +514,11 @@ class App:
             session.add(factura)
             session.commit()
 
-            in_thread(
+            in_thread(  # pylint: disable=undefined-variable
                 client_option=client_option,
                 client_id=client_id,
                 option=option,
-                products=products
+                products=products,
             )
 
             self.clear_all()

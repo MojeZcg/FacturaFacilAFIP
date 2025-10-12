@@ -3,8 +3,8 @@ import time
 from datetime import datetime
 
 from tkinter.messagebox import showerror
-from dotenv import load_dotenv
 from pathlib import Path
+from dotenv import load_dotenv
 
 
 from selenium.webdriver.common.by import By
@@ -51,7 +51,9 @@ def start_chrome():
     }
 
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.add_argument("--log-level=3")
     options.add_argument("--disable-gpu")
     options.add_experimental_option("prefs", prefs)
 
@@ -81,7 +83,12 @@ def login(driver):
 
         # Ingresar el Cuil Correspondiente
         username.clear()
-        username.send_keys(os.getenv("AFIP_CUIL"))
+        afip_cuil = os.getenv("AFIP_CUIL")
+
+        if afip_cuil is None:
+            raise ValueError("La variable de entorno 'AFIP_CUIL' no está definida.")
+
+        username.send_keys(afip_cuil)
         username.send_keys(Keys.RETURN)
 
         # Selecciona el campo Clave
@@ -91,7 +98,12 @@ def login(driver):
 
         # Ingresar la Clave Correspondiente
         password.clear()
-        password.send_keys(os.getenv("AFIP_KEY"))
+        afip_key = os.getenv("AFIP_KEY")
+
+        if afip_key is None:
+            raise ValueError("La variable de entorno 'AFIP_KEY' no está definida.")
+
+        password.send_keys(afip_key)
         password.send_keys(Keys.RETURN)
 
         # Ingresa a responsable inscripto

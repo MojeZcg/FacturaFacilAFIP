@@ -57,7 +57,7 @@ def initialize_env_gui(root):
     )
 
     def save_env():
-        cuil = entry_cuil.get().strip()
+        cuil = "".join(ch for ch in entry_cuil.get().strip() if ch.isdigit())
         key = entry_key.get().strip()
         path = download_path.get().replace("\\", "/")
 

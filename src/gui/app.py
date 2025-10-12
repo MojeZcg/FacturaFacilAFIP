@@ -1,6 +1,8 @@
+import os
 from tkinter.messagebox import showwarning, showinfo
 import ttkbootstrap as ttk
-from utils.env import update_afip_key, refresh_env, getenv
+from dotenv import load_dotenv
+from utils.env import update_arca_key
 
 from utils.helpers import center_window
 
@@ -37,7 +39,7 @@ class App:
         self.root = r
 
         # Configuracion de la pestaña root
-        self.root.title("Factura Fácil AFIP")
+        self.root.title("MiFactura ARCA")
         self.root.resizable(False, False)
         self.root.iconbitmap(ICON_PATH)
         self.root.geometry("612x420")
@@ -181,12 +183,12 @@ class App:
 
     def show_update_window(self):
         """
-        Muestra una ventana para actualizar la clave AFIP_KEY.
+        Muestra una ventana para actualizar la clave ARCA_KEY.
         """
 
         def submit():
             """
-            Obtiene el nuevo valor de la entrada y actualiza la clave AFIP_KEY.
+            Obtiene el nuevo valor de la entrada y actualiza la clave ARCA_KEY.
             Muestra una advertencia si el campo está vacío y una notificación
             si la actualización es exitosa.
             """
@@ -194,20 +196,20 @@ class App:
             if not new_value:
                 showwarning("Advertencia", "El campo no puede estar vacío")
                 return
-            update_afip_key(new_value)
-            showinfo("Éxito", "Cambiaste la contraseña de afip.")
+            update_arca_key(new_value)
+            showinfo("Éxito", "Cambiaste la contraseña de arca.")
             update_window.destroy()
 
-        refresh_env()
+        load_dotenv()
 
         update_window = ttk.Toplevel(self.root)
         update_window.geometry("280x115")
         update_window.resizable(False, False)
         update_window.iconbitmap(ICON_PATH)
-        update_window.title("Actualizar AFIP_KEY")
+        update_window.title("Actualizar ARCA_KEY")
 
         ttk.Label(update_window, text="Contraseña actual: ").place(x=15, y=10)
-        current_key = getenv("AFIP_KEY")
+        current_key = os.getenv("ARCA_KEY")
         ttk.Label(update_window, text=current_key, bootstyle="primary").place(
             x=130, y=10
         )
@@ -487,7 +489,7 @@ class App:
 
     def send(self):
         """
-        Envía los datos de facturación a la página de AFIP y guarda la factura en la
+        Envía los datos de facturación a la página de ARCA y guarda la factura en la
         base de datos.
         """
         client_id = self.validate_client_id()

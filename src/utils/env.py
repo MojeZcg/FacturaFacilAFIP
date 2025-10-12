@@ -1,30 +1,13 @@
-import os
-from dotenv import load_dotenv, set_key
+"""Módulo para manejar la actualización de variables de entorno en el archivo .env."""
 
-def refresh_env():
-    """
-    Recarga las variables de entorno desde el archivo .env.
-    """
-    load_dotenv()
+from dotenv import set_key
 
-def getenv(nombre_variable):
+
+def update_arca_key(new_value):
     """
-    Obtiene el valor de una variable de entorno. Asegúrate de que las variables
-    se hayan recargado antes de usar esta función.
+    Actualiza la clave ARCA_KEY en el archivo .env.
 
     Args:
-        nombre_variable (str): Nombre de la variable de entorno.
-
-    Returns:
-        str: Valor de la variable de entorno.
+        new_value (str): El nuevo valor para ARCA_KEY.
     """
-    return os.getenv(nombre_variable)
-
-def update_afip_key(new_value):
-    """
-    Actualiza la clave AFIP_KEY en el archivo .env.
-
-    Args:
-        new_value (str): El nuevo valor para AFIP_KEY.
-    """
-    set_key('.env', 'AFIP_KEY', new_value)
+    set_key(".env", "ARCA_KEY", new_value)

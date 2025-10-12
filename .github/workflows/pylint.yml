@@ -8,17 +8,28 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.12"]
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pylint
-      - name: Analysing the code with pylint
+
+      - name: Analysing the code with pylint (min score 8.5)
         run: |
-          pylint **/*.py
+          SCORE=$(pylint **/*.py | tee pylint-report.txt | tail -n 2 | grep -oE '[0-9]+\.[0-9]+' | tail -1)
+          echo "Pylint score: $SCORE"
+          if (( $(echo "$SCORE < 8.5" | bc -l) )); then
+            echo "❌ Lint score too low ($SCORE < 8.5)"
+            exit 1
+          else
+            echo "✅ Lint passed with score $SCORE"
+          fi

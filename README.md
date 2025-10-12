@@ -1,6 +1,6 @@
 # MiFactura
 
-MiFactura es una aplicación para emitir facturas electrónicas a través de los servicios web de la AFIP (Administración Federal de Ingresos Públicos).
+MiFactura es una aplicación para emitir facturas electrónicas a través de los servicios web de la ARCA (Administración Federal de Ingresos Públicos).
 
 [![GPLv3 License](https://img.shields.io/badge/License-GPL%20v3-yellow.svg)](https://opensource.org/licenses/)
 
@@ -16,8 +16,8 @@ MiFactura es una aplicación para emitir facturas electrónicas a través de los
 Clone the project
 
 ```bash
-  git clone git@github.com:MojeZcg/FacturaFacilAFIP.git
-  cd FacturaFacilAFIP
+  git clone git@github.com:MojeZcg/FacturaFacilARCA.git
+  cd FacturaFacilARCA
 ```
 
 Create an enviroment and activate it
@@ -51,16 +51,16 @@ Start the app (the database is created by running main.py)
 Para desplegar, debe generar un archivo .spec con pyinstaller
 
 ```bash
-  pyinstaller --onefile --name FacturaFacilAfip --icon=static/arca.ico --add-data ".env:." --add-data "static:static" --add-data "LICENSE:." main.py
+  pyinstaller --onefile --name FacturaFacilArca --icon=static/arca.ico --add-data ".env:." --add-data "static:static" --add-data "LICENSE:." main.py
 ```
 
 ## Variables de entorno
 
 Para ejecutar este proyecto, deberá agregar las siguientes variables de entorno a su archivo .env. O use el .iss para crear la configuración.
 
-`AFIP_CUIL`
+`ARCA_CUIL`
 
-`AFIP_KEY`
+`ARCA_KEY`
 
 `DOWNLOAD_PATH`
 

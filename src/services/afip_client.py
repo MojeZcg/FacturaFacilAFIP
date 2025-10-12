@@ -66,7 +66,7 @@ def start_chrome():
 
 def login(driver):
     """
-    Realiza el inicio de sesión en la página de AFIP y navega a la sección
+    Realiza el inicio de sesión en la página de ARCA y navega a la sección
     correspondiente.
 
     Args:
@@ -83,12 +83,12 @@ def login(driver):
 
         # Ingresar el Cuil Correspondiente
         username.clear()
-        afip_cuil = os.getenv("AFIP_CUIL")
+        arca_cuil = os.getenv("ARCA_CUIL")
 
-        if afip_cuil is None:
-            raise ValueError("La variable de entorno 'AFIP_CUIL' no está definida.")
+        if arca_cuil is None:
+            raise ValueError("La variable de entorno 'ARCA_CUIL' no está definida.")
 
-        username.send_keys(afip_cuil)
+        username.send_keys(arca_cuil)
         username.send_keys(Keys.RETURN)
 
         # Selecciona el campo Clave
@@ -98,12 +98,12 @@ def login(driver):
 
         # Ingresar la Clave Correspondiente
         password.clear()
-        afip_key = os.getenv("AFIP_KEY")
+        arca_key = os.getenv("ARCA_KEY")
 
-        if afip_key is None:
-            raise ValueError("La variable de entorno 'AFIP_KEY' no está definida.")
+        if arca_key is None:
+            raise ValueError("La variable de entorno 'ARCA_KEY' no está definida.")
 
-        password.send_keys(afip_key)
+        password.send_keys(arca_key)
         password.send_keys(Keys.RETURN)
 
         # Ingresa a responsable inscripto
@@ -198,7 +198,7 @@ def esperar_descarga_completa(folder, timeout=20):
 
 def realizar_operacion(driver, client_option, client_id, option, products, debug=False):
     """
-    Realiza una operación de facturación en la página de AFIP.
+    Realiza una operación de facturación en la página de ARCA.
 
     Args:
         driver (WebDriver): Controlador del navegador.

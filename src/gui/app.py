@@ -1,22 +1,31 @@
+"""Aplicación principal de MiFactura ARCA."""
+
 import os
+import threading
 from tkinter.messagebox import showwarning, showinfo
 import ttkbootstrap as ttk
 from dotenv import load_dotenv
 from config import ICON_PATH
 from utils.env import update_arca_key
-from utils.helpers import center_window
 
-from gui.history import History
 from models.database import session
 from models.downloads import download
 from models.database import (
     Facturas,
 )
+from services.afip_client import realizar_operacion
 
 CONDITION_OPTIONS = [
     "Consumidor Final",
     "Iva Responsable Inscripto",
     "Iva Sujeto Excento",
+]
+
+PREAJUSTES_PRODUCTOS = [
+    "Fotos Carnet",
+    "Revelado de Fotos",
+    "Servicio Laser",
+    "Estampados",
 ]
 
 
@@ -38,9 +47,17 @@ class App:
 
         # Configuracion de la pestaña root
         self.root.title("MiFactura ARCA")
+
+        width, height = 612, 440
+
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = int((screen_width / 2) - (width / 2))
+        y = int((screen_height / 2) - (height / 2))
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
         self.root.resizable(False, False)
+
         self.root.iconbitmap(ICON_PATH)
-        self.root.geometry("612x420")
 
         menu_bar = ttk.Menu(self.root)
         self.root.config(menu=menu_bar)
@@ -106,8 +123,8 @@ class App:
         )
         self.tree.heading("name", text="Nombre")
         self.tree.heading("quantity", text="Cantidad (Unidades)")
-        self.tree.heading("unique_price", text="Precio por Unidad (ARS)")
-        self.tree.heading("total_price", text="Precio Parcial (ARS)")
+        self.tree.heading("unique_price", text="Precio por Unidad ($)")
+        self.tree.heading("total_price", text="Precio Parcial ($)")
 
         self.tree.column("name", width=150)
         self.tree.column("quantity", anchor=ttk.E, width=150)
@@ -116,12 +133,7 @@ class App:
         self.tree.place(x=5, y=75, width=600)
 
         # Crear campo y opciones para el OptionMenu
-        self.common_products = (
-            "Fotos Carnet",
-            "Revelado de Fotos",
-            "Servicio Laser",
-            "Estampados",
-        )
+        self.common_products = PREAJUSTES_PRODUCTOS
 
         ttk.Label(r, text="Nombre de producto:").place(x=10, y=265)
         self.name = ttk.Combobox(r, bootstyle="secondary", values=self.common_products)
@@ -142,8 +154,7 @@ class App:
             text="Agregar Producto",
             command=self.add_row,
         )
-
-        self.add_row_button.place(x=180, y=313, width=140, height=28)
+        self.add_row_button.place(x=180, y=295, width=150, height=35)
 
         self.remove_row_button = ttk.Button(
             r,
@@ -151,33 +162,26 @@ class App:
             text="Eliminar Seleccionados",
             command=self.delete_rows,
         )
-        self.remove_row_button.place(x=180, y=348, width=140, height=28)
+        self.remove_row_button.place(x=180, y=340, width=150, height=30)
 
         self.remove_all_button = ttk.Button(
             r, bootstyle="dark", text="Eliminar Todos", command=self.delete_all_rows
         )
-        self.remove_all_button.place(x=180, y=383, width=140, height=28)
+        self.remove_all_button.place(x=180, y=380, width=150, height=30)
 
         self.text_total = ttk.Label(r, bootstyle="dark", text="Total: 0$")
-        self.text_total.place(x=395, y=272)
+        self.text_total.place(x=595, y=348, anchor="e")
 
         # Botón para ejecutar las funciones de Selenium
         self.send_button = ttk.Button(
             r, bootstyle="success-outline", text="Facturar", command=self.send
         )
-        self.send_button.place(x=485, y=270, width=120)
-
-        self.history_button = ttk.Button(
-            r, bootstyle="dark-outline", text="Ver Historial", command=self.history
-        )
-        self.history_button.place(x=485, y=310, width=120)
+        self.send_button.place(x=400, y=370, width=200, height=40)
 
         self.error_label = ttk.Label(r, text="", bootstyle="danger")
         self.error_label.place(x=330, y=390)
 
         self.raw_client_id = ""
-
-        center_window(self.root)
 
     def show_update_window(self):
         """
@@ -208,7 +212,7 @@ class App:
 
         ttk.Label(update_window, text="Contraseña actual: ").place(x=15, y=10)
         current_key = os.getenv("ARCA_KEY")
-        ttk.Label(update_window, text=current_key, bootstyle="primary").place(
+        ttk.Label(update_window, text=current_key, bootstyle="secondary").place(
             x=130, y=10
         )
 
@@ -216,9 +220,9 @@ class App:
         entry = ttk.Entry(update_window, bootstyle="dark")
         entry.place(x=130, y=35)
 
-        ttk.Button(update_window, text="Actualizar", command=submit).place(
-            x=163, y=75, width=100
-        )
+        ttk.Button(
+            update_window, text="Actualizar", command=submit, bootstyle="dark"
+        ).place(x=163, y=75, width=100)
 
     def obtener_valores_columna(self):
         """
@@ -249,7 +253,7 @@ class App:
         resultado = 0
         for valor in valores:
             resultado += float(valor)
-        self.text_total.config(text=f"Total: {resultado}$")
+        self.text_total.config(text=f"Total: {resultado:,.2f}$")
 
     def format_client_id(self, *args):
         """
@@ -481,10 +485,6 @@ class App:
         self.error_label.config(text="")
         self.text_total.config(text="Total: 0$")
 
-    def history(self):
-        """_summary_"""
-        History(self.root)
-
     def send(self):
         """
         Envía los datos de facturación a la página de ARCA y guarda la factura en la
@@ -511,15 +511,15 @@ class App:
         )
 
         if client_option != -1 and option != -1 and client_id != -1 and products:
+
+            thread = threading.Thread(
+                target=realizar_operacion,
+                args=(client_option, client_id, option, products),
+            )
+            thread.start()
+
             session.add(factura)
             session.commit()
-
-            in_thread(  # pylint: disable=undefined-variable
-                client_option=client_option,
-                client_id=client_id,
-                option=option,
-                products=products,
-            )
+            session.close()
 
             self.clear_all()
-            session.close()

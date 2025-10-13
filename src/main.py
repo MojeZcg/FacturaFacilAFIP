@@ -12,9 +12,7 @@ from config import initialize_env_gui
 
 from models.database import inicializar_si_necesario, session
 
-
 inicializar_si_necesario()
-
 load_dotenv()
 
 

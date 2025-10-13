@@ -20,6 +20,7 @@ from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
 from gui.progress import ProgressWindow
+from config import DEBUG
 
 
 # Configuración de la carpeta de descargas
@@ -51,7 +52,8 @@ def start_chrome():
     }
 
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    if not DEBUG:
+        options.add_argument("--headless")
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     options.add_argument("--log-level=3")
     options.add_argument("--disable-gpu")
@@ -196,7 +198,7 @@ def esperar_descarga_completa(folder, timeout=20):
     return False
 
 
-def realizar_operacion(driver, client_option, client_id, option, products, debug=False):
+def realizar_operacion(client_option, client_id, option, products):
     """
     Realiza una operación de facturación en la página de ARCA.
 
@@ -208,6 +210,9 @@ def realizar_operacion(driver, client_option, client_id, option, products, debug
         products (list): Lista de productos.
         debug (bool): Si es True, no confirma ni descarga la factura.
     """
+
+    driver = start_chrome()
+
     progress = ProgressWindow(None, "Facturación")
 
     try:
@@ -274,7 +279,7 @@ def realizar_operacion(driver, client_option, client_id, option, products, debug
 
         print("[INFO] Datos ingresados correctamente.")
 
-        if not debug:
+        if not DEBUG:
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable(
                     (
@@ -304,6 +309,7 @@ def realizar_operacion(driver, client_option, client_id, option, products, debug
             esperar_descarga_completa(download_path)
 
             progress.set_progress(97)
+            print("[INFO] Factura confirmada y descargada correctamente.")
         else:
             print("[DEBUG] Simulación activa: no se confirmó ni descargó la factura.")
 
@@ -314,4 +320,3 @@ def realizar_operacion(driver, client_option, client_id, option, products, debug
         progress.set_progress(100)
         driver.quit()
         progress.stop_progress()
-        print("Operación completada. El navegador se ha cerrado.")

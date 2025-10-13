@@ -1,8 +1,7 @@
 from tkinter import ttk
 from tkinter import HORIZONTAL, Toplevel
 
-# Define the path to your icon file here
-ICON_PATH = "static/arca.ico"
+from config import ICON_PATH
 
 
 class ProgressWindow:
@@ -36,7 +35,18 @@ class ProgressWindow:
             text (str): El texto que se mostrará en la ventana de progreso.
         """
         self.progress_window = Toplevel(self.root)
-        self.progress_window.geometry("280x60")
+
+        width, height = 280, 60
+
+        screen_width = self.progress_window.winfo_screenwidth()
+        screen_height = self.progress_window.winfo_screenheight()
+        x = int((screen_width / 2) - (width / 2))
+        y = int((screen_height / 2) - (height / 2))
+
+        self.progress_window.geometry(f"{width}x{height}+{x}+{y}")
+
+        self.progress_window.resizable(False, False)
+
         self.progress_window.title("Progreso de Factura")
         self.progress_window.iconbitmap(self.icon_path)
 

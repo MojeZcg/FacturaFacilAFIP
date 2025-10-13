@@ -1,3 +1,5 @@
+"""Configuración inicial de la aplicación usando tkinter."""
+
 import sys
 from pathlib import Path
 import os
@@ -14,15 +16,16 @@ def resource_path(relative_path):
     return base_path / relative_path
 
 
+DEBUG = True  # Cambiar a True para modo debug
 ICON_PATH = resource_path("static/arca.ico")
 
 
 def initialize_env_gui(root):
+    """Inicializa la ventana de configuración inicial si no existe el archivo .env"""
     app_dir = Path(__file__).resolve().parent.parent
     env_path = app_dir / ".env"
 
     if env_path.exists():
-        print("Archivo .env ya existente. Saltando configuración inicial.")
         return
 
     # --- Ventana principal ---

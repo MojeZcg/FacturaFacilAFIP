@@ -17,7 +17,7 @@ Clone the project
 
 ```bash
   git clone git@github.com:MojeZcg/FacturaFacilARCA.git
-  cd FacturaFacilARCA
+  cd MiFactura
 ```
 
 Create an enviroment and activate it

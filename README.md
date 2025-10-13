@@ -8,7 +8,7 @@ MiFactura es una aplicación para emitir facturas electrónicas a través de los
 
 <p align="center">
   <img src="screenshots/Screenshot_1.png" alt="Main App Screenshot" width="450">
-  <img src="screenshots/Screenshot_2.png" alt="History window Screenshot" width="300">
+  <img src="screenshots/Screenshot_2.png" alt="History window Screenshot" >
 </p>
 
 ## Como ejecutar localmente

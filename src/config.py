@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 import os
 import tkinter as tk
+import ttkbootstrap as ttk
 from tkinter import filedialog, messagebox
 
 
@@ -16,7 +17,7 @@ def resource_path(relative_path):
     return base_path / relative_path
 
 
-DEBUG = True  # Cambiar a True para modo debug
+DEBUG = os.getenv("DEBUG", "0") == "1"
 ICON_PATH = resource_path("static/arca.ico")
 
 
@@ -42,7 +43,7 @@ def initialize_env_gui(root):
     root.resizable(False, False)
 
     tk.Label(root, text="Configuración de ARCA", font=("Segoe UI", 14, "bold")).place(
-        x=50, y=10
+        x=50, y=8
     )
     tk.Label(root, text="CUIL/CUIT:").place(x=15, y=50)
     entry_cuil = tk.Entry(root, width=30)
@@ -61,15 +62,17 @@ def initialize_env_gui(root):
             os.makedirs(full_path, exist_ok=True)
             download_path.set(full_path)
 
-    frame_folder = tk.Frame(root)
-    frame_folder.place(x=15, y=105)
-    tk.Label(frame_folder, text="Carpeta de descarga:").pack(anchor="w")
-    tk.Entry(frame_folder, textvariable=download_path, width=32).pack(
-        side="left", padx=(3, 5)
+    tk.Label(root, text="Carpeta de descarga:").place(x=10, y=115)
+    tk.Entry(root, textvariable=download_path, width=30, font=("Segoe UI", 9)).place(
+        x=15, height=28, y=135
     )
-    tk.Button(frame_folder, text="Seleccionar", command=select_folder, width=10).pack(
-        pady=5
-    )
+    ttk.Button(
+        root,
+        text="Seleccionar",
+        command=select_folder,
+        bootstyle="dark",
+        width=10,
+    ).place(x=220, y=135, height=28)
 
     def save_env():
         cuil = "".join(ch for ch in entry_cuil.get().strip() if ch.isdigit())
@@ -88,13 +91,11 @@ def initialize_env_gui(root):
         messagebox.showinfo("Configuración", "Archivo .env creado correctamente.")
         root.destroy()
 
-    tk.Button(
+    ttk.Button(
         root,
         text="Guardar configuración",
         command=save_env,
-        bg="#0078D7",
-        fg="white",
+        bootstyle="dark",
         width=30,
-        height=2,
-    ).place(x=50, y=167)
+    ).place(x=50, y=175, height=35)
     root.mainloop()

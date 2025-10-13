@@ -1,4 +1,3 @@
-import threading
 import sqlite3
 import json
 from tkinter import Tk

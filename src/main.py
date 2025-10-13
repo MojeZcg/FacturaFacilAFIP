@@ -6,11 +6,12 @@ import ttkbootstrap as ttk
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from gui.setup_env import initialize_env_gui
 
-from gui.app import App  # Asegúrate de que la ruta de importación sea correcta
+from gui.app import App
+from config import initialize_env_gui
 
 from models.database import inicializar_si_necesario, session
+
 
 inicializar_si_necesario()
 

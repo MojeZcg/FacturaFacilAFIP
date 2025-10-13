@@ -2,8 +2,8 @@ import os
 from tkinter.messagebox import showwarning, showinfo
 import ttkbootstrap as ttk
 from dotenv import load_dotenv
+from config import ICON_PATH
 from utils.env import update_arca_key
-
 from utils.helpers import center_window
 
 from gui.history import History
@@ -12,8 +12,6 @@ from models.downloads import download
 from models.database import (
     Facturas,
 )
-
-ICON_PATH = "./static/arca.ico"
 
 CONDITION_OPTIONS = [
     "Consumidor Final",

@@ -1,8 +1,20 @@
-import tkinter as tk
-import os
-from tkinter import filedialog, messagebox
+import sys
 from pathlib import Path
-from gui.app import ICON_PATH
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+
+def resource_path(relative_path):
+    """Obtiene la ruta absoluta del recurso, ya sea en desarrollo o en PyInstaller"""
+    try:
+        base_path = Path(sys._MEIPASS)  # pylint: disable=protected-access
+    except AttributeError:
+        base_path = Path(__file__).parent
+    return base_path / relative_path
+
+
+ICON_PATH = resource_path("static/arca.ico")
 
 
 def initialize_env_gui(root):

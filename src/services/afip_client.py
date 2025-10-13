@@ -24,17 +24,6 @@ from config import DEBUG
 
 
 # Configuración de la carpeta de descargas
-fecha_actual = datetime.now()
-nombre_carpeta = fecha_actual.strftime("%d de %B %Y")
-
-default_path = Path(str(os.getenv("DOWNLOAD_PATH")))
-
-download_path = os.path.join(default_path, nombre_carpeta)
-
-
-# Crear la carpeta de descargas si no existe
-if not os.path.exists(download_path):
-    os.makedirs(download_path)
 
 
 def start_chrome():
@@ -210,6 +199,16 @@ def realizar_operacion(client_option, client_id, option, products):
         products (list): Lista de productos.
         debug (bool): Si es True, no confirma ni descarga la factura.
     """
+    fecha_actual = datetime.now()
+    nombre_carpeta = fecha_actual.strftime("%d de %B %Y")
+
+    default_path = Path(str(os.getenv("DOWNLOAD_PATH")))
+
+    download_path = os.path.join(default_path, nombre_carpeta)
+
+    # Crear la carpeta de descargas si no existe
+    if not os.path.exists(download_path):
+        os.makedirs(download_path)
 
     driver = start_chrome()
 

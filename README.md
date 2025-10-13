@@ -23,14 +23,14 @@ Clone the project
 Create an enviroment and activate it
 
 ```bash
-  python -m venv venv
+  py -3.12 -m venv venv
   .\venv\Scripts\activate
 ```
 
 Or Linux or Mac.
 
 ```bash
-  python -m venv venv
+  py -3.12 -m venv venv
   source venv/bin/activate
 ```
 
@@ -43,7 +43,7 @@ Install dependencies
 Start the app (the database is created by running main.py)
 
 ```bash
-  python main.py
+  py src/main.py
 ```
 
 ## Como Desplegar
